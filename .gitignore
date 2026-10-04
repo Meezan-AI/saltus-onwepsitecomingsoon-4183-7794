@@ -72,3 +72,10 @@ scripts/
 !packages/mobile/scripts/
 packages/mobile/scripts/*
 !packages/mobile/scripts/generate-ios-certs.py
+# packages/web/scripts/ is NOT local-only provisioning: prerender.ts is
+# invoked by the committed `build` script (tsc && vite build && bun run
+# prerender) and must ship to production, and leads.ts/test-lead-emails.ts
+# are invoked by committed root package.json scripts (leads:list,
+# leads:resend, test:emails). The blanket `scripts/` rule above silently
+# excluded this whole directory from every commit until now.
+!packages/web/scripts/
