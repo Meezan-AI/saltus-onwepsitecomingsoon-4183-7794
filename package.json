@@ -21,7 +21,10 @@
     "db:migrate": "turbo db:migrate",
     "db:push": "turbo db:push",
     "internal:check-conventions": "konsistent",
-    "internal:kill-port": "lsof -t -i :${PORT:-4200} | xargs kill -9"
+    "internal:kill-port": "lsof -t -i :${PORT:-4200} | xargs kill -9",
+    "leads:list": "cd packages/web && bun run --env-file=../../.env scripts/leads.ts list",
+    "leads:resend": "cd packages/web && bun run --env-file=../../.env scripts/leads.ts resend",
+    "test:emails": "cd packages/web && bun run --env-file=../../.env scripts/test-lead-emails.ts"
   },
   "devDependencies": {
     "@tursodatabase/api": "^1.9.2",
@@ -30,6 +33,7 @@
     "konsistent": "^1.0.0-beta.2",
     "oxfmt": "0.54.0",
     "oxlint": "1.69.0",
+    "playwright": "^1.62.1",
     "semver": "^7.7.2",
     "turbo": "2.9.18",
     "typescript": "5.9.3",

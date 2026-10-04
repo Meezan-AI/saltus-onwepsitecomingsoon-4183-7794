@@ -130,11 +130,40 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
   font-family: "Poppins", ui-sans-serif, system-ui, sans-serif;
   background-color: var(--saltus-navy);
+  width: 100%;
+  overflow-x: clip;
+}
+
+/* Mobile safety: never allow horizontal page scroll from decorative or long content */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+li,
+a,
+span,
+td,
+th {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+img,
+svg,
+video,
+canvas,
+iframe {
+  max-width: 100%;
 }
 
 .font-display {
@@ -186,4 +215,35 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--saltus-orange);
   border-radius: 8px;
+}
+
+@keyframes saltus-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: saltus-marquee 38s linear infinite;
+}
+
+.marquee-mask:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+.marquee-mask {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+
+.prose-saltus p {
+  color: #c8d1de;
+  line-height: 1.9;
+  margin-bottom: 1.35rem;
 }
