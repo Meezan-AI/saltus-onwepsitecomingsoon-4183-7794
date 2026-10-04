@@ -533,6 +533,7 @@ export const en: Content = {
   footer: {
     tagline:
       "Creative • Branding • Printing • Flags • Apparel • Stamps • Conferences • Exhibitions • AI • SaaS • Websites • Mobile Apps • Marketing • Enterprise Solutions",
+    legalName: "Saltus Pathways for Exhibitions and Events Management",
     quickLinks: "Quick Links",
     servicesTitle: "Services",
     contactTitle: "Contact",

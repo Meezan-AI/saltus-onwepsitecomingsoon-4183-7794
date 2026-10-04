@@ -160,6 +160,7 @@ export type Content = {
   };
   footer: {
     tagline: string;
+    legalName: string;
     quickLinks: string;
     servicesTitle: string;
     contactTitle: string;

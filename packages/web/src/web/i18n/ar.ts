@@ -533,6 +533,7 @@ export const ar: Content = {
   footer: {
     tagline:
       "إبداع • هوية بصرية • طباعة • أعلام • ملابس • أختام • مؤتمرات • معارض • ذكاء اصطناعي • أنظمة أعمال • مواقع • تطبيقات • تسويق • حلول مؤسسية",
+    legalName: "Saltus Pathways for Exhibitions and Events Management",
     quickLinks: "روابط سريعة",
     servicesTitle: "الخدمات",
     contactTitle: "تواصل",

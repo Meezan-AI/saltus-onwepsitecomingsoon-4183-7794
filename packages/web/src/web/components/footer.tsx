@@ -24,7 +24,12 @@ export function Footer() {
           <div className="lg:col-span-1">
             <div className="flex items-center gap-3">
               <img src="/images/logo-stacked.png" alt="Saltus ONE" className="h-14 w-14 object-contain" />
-              <BrandWordmark className="text-xl font-bold" />
+              <div className="flex flex-col">
+                <BrandWordmark className="text-xl font-bold" />
+                <span className="text-[11px] font-medium uppercase tracking-wide text-[#B9C2D0]/80">
+                  {t.footer.legalName}
+                </span>
+              </div>
             </div>
             <p className="mt-5 text-sm leading-relaxed text-[#B9C2D0]">{t.footer.tagline}</p>
             {/* Digital Business Card — subtle orange accent, 44px min touch target on mobile */}
