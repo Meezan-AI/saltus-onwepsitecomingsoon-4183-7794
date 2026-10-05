@@ -45,6 +45,32 @@ function routeToFileName(route: string): string {
   return `${route.replace(/^\//, "").replace(/\//g, "__")}.html`;
 }
 
+/**
+ * A snapshot is only useful for SEO if it actually carries the tags
+ * search engines and `curl` need. Reject anything missing them instead of
+ * writing a "successful" snapshot that is really just the bare SPA shell —
+ * that silent failure mode is exactly what let two production deploys ship
+ * with zero prerendered SEO content while this script reported nothing
+ * wrong (it was never run at all; see the project .gitignore history), and
+ * it is what this check now exists to make impossible to miss.
+ */
+function validateSnapshot(html: string): string[] {
+  const problems: string[] = [];
+  const titleMatch = /<title>([^<]*)<\/title>/.exec(html);
+  if (!titleMatch || !titleMatch[1]?.trim()) problems.push("missing <title>");
+  const h1Matches = html.match(/<h1[\s>]/g) ?? [];
+  if (h1Matches.length === 0) problems.push("missing <h1>");
+  if (h1Matches.length > 1) problems.push(`found ${h1Matches.length} <h1> elements, expected exactly 1`);
+  if (!/rel="canonical"/.test(html)) problems.push('missing rel="canonical" link');
+  if (!/name="description"/.test(html)) problems.push("missing meta description");
+  if (!/name="robots"/.test(html)) problems.push("missing meta robots");
+  if (!/property="og:title"/.test(html)) problems.push("missing og:title");
+  if (!/hreflang=/.test(html)) problems.push("missing hreflang alternate link");
+  const ldCount = (html.match(/application\/ld\+json/g) ?? []).length;
+  if (ldCount === 0) problems.push("missing JSON-LD");
+  return problems;
+}
+
 async function serveDistOnce(): Promise<{ port: number; stop: () => void }> {
   const server = Bun.serve({
     port: 0,
@@ -70,8 +96,23 @@ async function main() {
 
   const { port, stop } = await serveDistOnce();
   const baseUrl = `http://localhost:${port}`;
-  const browser = await chromium.launch({ executablePath: "/usr/bin/google-chrome" });
+  let browser: Awaited<ReturnType<typeof chromium.launch>>;
+  try {
+    browser = await chromium.launch({ executablePath: "/usr/bin/google-chrome" });
+  } catch (err) {
+    // Fail the whole build immediately and loudly — a missing/unlaunchable
+    // browser must never result in a build that "succeeds" with no SEO
+    // content. No manifest is written, so a stale one from a previous build
+    // can't be picked up by `dist/` either (dist is wiped by `vite build`).
+    console.error("[prerender] FATAL: could not launch Chromium at /usr/bin/google-chrome.");
+    console.error("[prerender] This build cannot ship without SEO prerendering. Failing the build.");
+    console.error(err instanceof Error ? err.message : err);
+    stop();
+    process.exit(1);
+  }
+
   const manifest: Record<string, string> = {};
+  const failures: Record<string, string[]> = {};
 
   try {
     const context = await browser.newContext({ viewport: { width: 1366, height: 900 } });
@@ -89,11 +130,18 @@ async function main() {
         );
         await page.waitForTimeout(100);
         const html = await page.evaluate(() => `<!doctype html>\n${document.documentElement.outerHTML}`);
+        const problems = validateSnapshot(html);
+        if (problems.length > 0) {
+          failures[route] = problems;
+          console.error(`[prerender] INVALID ${route}: ${problems.join("; ")}`);
+          continue;
+        }
         const fileName = routeToFileName(route);
         await Bun.write(`${PRERENDER_DIR}${fileName}`, html);
         manifest[route] = fileName;
         console.log(`[prerender] ok  ${route} -> prerendered/${fileName}`);
       } catch (err) {
+        failures[route] = [err instanceof Error ? err.message : String(err)];
         console.error(`[prerender] FAILED ${route}:`, err instanceof Error ? err.message : err);
       } finally {
         await page.close();
@@ -105,7 +153,21 @@ async function main() {
   }
 
   await Bun.write(`${PRERENDER_DIR}manifest.json`, JSON.stringify(manifest, null, 2));
-  console.log(`[prerender] wrote manifest with ${Object.keys(manifest).length} entries`);
+  console.log(`[prerender] wrote manifest with ${Object.keys(manifest).length}/${ROUTES.length} entries`);
+
+  // A build that silently ships with some (or all) routes missing their SEO
+  // content is the exact bug this whole script exists to prevent. Fail the
+  // build hard instead of letting `server.ts` fall back to the bare SPA
+  // shell for any route no one explicitly accepted as noindex/skipped.
+  const missingRoutes = ROUTES.filter((route) => !manifest[route]);
+  if (missingRoutes.length > 0) {
+    console.error(`[prerender] FATAL: ${missingRoutes.length}/${ROUTES.length} route(s) failed to prerender:`);
+    for (const route of missingRoutes) {
+      console.error(`  - ${route}: ${(failures[route] ?? ["unknown error"]).join("; ")}`);
+    }
+    console.error("[prerender] Failing the build — fix the above before shipping.");
+    process.exit(1);
+  }
 }
 
 main().catch((err) => {

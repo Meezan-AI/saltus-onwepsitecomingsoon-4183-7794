@@ -20,9 +20,24 @@ try {
   const raw = await Bun.file(`${prerenderDir}/manifest.json`).text();
   manifest = JSON.parse(raw);
 } catch {
-  // No prerendered snapshots yet (e.g. local dev build without the
-  // prerender step) — fall back to the plain SPA shell for every route.
   manifest = {};
+}
+
+// A missing or empty manifest means every route will silently fall back to
+// the bare SPA shell below — exactly the failure mode that shipped to
+// production twice with no visible error. `scripts/prerender.ts` now fails
+// the build itself when this happens, so reaching this point with an empty
+// manifest means the build step didn't run as part of deploy at all. Log it
+// as loudly as possible on every single request (not just at startup) so
+// it is unmissable in any production log viewer, instead of only a
+// discoverable-if-you-happen-to-check startup line.
+if (Object.keys(manifest).length === 0) {
+  console.error(
+    "[server] FATAL CONFIG: dist/prerendered/manifest.json is missing or empty. " +
+      "Every route is serving the bare SPA shell with zero SEO content. " +
+      "This means `bun run build` either didn't run, or its `prerender` step " +
+      "didn't run/complete before this server started. Check the build logs.",
+  );
 }
 
 function normalizePathname(pathname: string) {
