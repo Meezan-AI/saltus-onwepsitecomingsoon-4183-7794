@@ -116,6 +116,16 @@ async function main() {
 
   try {
     const context = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+    // The AnalyticsListener component (src/web/components/analytics-listener.tsx)
+    // loads gtag.js and fires a real page_view on mount, same as a real visitor.
+    // Block analytics network calls during this crawl so every `bun run build`
+    // (local, CI, or a release) never sends a build-time hit to GA4 — the
+    // <script> tag and gtag() calls still run harmlessly against the in-memory
+    // dataLayer, which is all the resulting static snapshot needs to capture.
+    await context.route(
+      /^https:\/\/(www\.googletagmanager\.com|www\.google-analytics\.com|analytics\.google\.com)\//,
+      (route) => route.abort(),
+    );
     for (const route of ROUTES) {
       const page = await context.newPage();
       try {
