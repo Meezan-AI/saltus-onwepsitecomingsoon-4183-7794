@@ -43,13 +43,56 @@ function loadGa4(id: string) {
   gtag("config", id, { anonymize_ip: true, send_page_view: false });
 }
 
-/** Explicit page_view, sent once on initial load and once per later route change. */
+/**
+ * Guards against sending the same page_view twice in a row. In practice
+ * this fires exactly once per effect run — but hydrating the prerendered
+ * markup commits this component's mount effect, and `location` never
+ * changes value between that commit and the next, so without this guard
+ * a second identical page_view would still go out. Keyed on path only, not
+ * time: a later, genuine revisit of the same path only ever happens after
+ * `location` has changed away and back, which this guard does not block.
+ */
+let lastSentPath: string | null = null;
+
+/**
+ * Sends one page_view for `path`. `page_title` is read from `document.title`,
+ * but that's only correct for the FIRST paint of a path — every other route
+ * is lazy-loaded (see app.tsx), and its <Seo> component (which sets the real
+ * title) only commits once that route's chunk has finished fetching, in a
+ * later React pass than this one. So wait for that commit: observe <title>
+ * for the mutation Seo's effect causes, and send once it fires — with a
+ * timeout fallback so a slow/absent chunk never swallows the pageview.
+ */
 function sendPageView(path: string) {
-  gtag("event", "page_view", {
-    page_path: path,
-    page_location: window.location.href,
-    page_title: document.title,
-  });
+  if (lastSentPath === path) return;
+  lastSentPath = path;
+
+  const fire = () => {
+    gtag("event", "page_view", {
+      page_path: path,
+      page_location: window.location.href,
+      page_title: document.title,
+    });
+  };
+
+  const titleEl = document.querySelector("title");
+  if (!titleEl) {
+    fire();
+    return;
+  }
+
+  let sent = false;
+  const settle = () => {
+    if (sent) return;
+    sent = true;
+    observer.disconnect();
+    fire();
+  };
+  const observer = new MutationObserver(settle);
+  observer.observe(titleEl, { childList: true });
+  // Covers routes whose <Seo> title already matches (no mutation fires) and
+  // any route with no <Seo> at all.
+  setTimeout(settle, 300);
 }
 
 /**
