@@ -5,6 +5,7 @@ import { Process } from "../components/process";
 import { Cta } from "../components/cta";
 import { ContactSection } from "../components/contact-section";
 import { Footer } from "../components/footer";
+import { DxForwardPromo } from "../components/dx-forward-promo";
 import { useLang } from "../i18n";
 
 export default function ConferencesPage() {
@@ -45,6 +46,7 @@ export default function ConferencesPage() {
           <h1 className="font-display mt-4 text-4xl font-extrabold text-white sm:text-6xl">{t.conferences.title}</h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#B9C2D0]">{t.conferences.desc}</p>
         </div>
+        <DxForwardPromo compact />
       </section>
       <ConferencesSection full />
       <Process />

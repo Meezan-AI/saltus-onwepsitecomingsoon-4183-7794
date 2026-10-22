@@ -60,6 +60,15 @@ export type Content = {
     videoClose: string;
     chips: string[];
   };
+  /** Floating promo card for DX Forward Jordan 2027 — the digital transformation
+   *  forum Saltus ONE organizes. See components/dx-forward-promo.tsx. */
+  dxForward: {
+    eyebrow: string;
+    name: string;
+    tagline: string;
+    dateLine: string;
+    cta: string;
+  };
   stats: { value: string; label: string }[];
   intro: {
     eyebrow: string;

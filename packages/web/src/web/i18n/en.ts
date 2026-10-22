@@ -78,6 +78,13 @@ export const en: Content = {
     videoClose: "Close video",
     chips: ["AI & Automation", "Web & Mobile Apps", "Printing & Branding", "Flags & Apparel", "Stamps & Seals", "Conferences & Exhibitions"],
   },
+  dxForward: {
+    eyebrow: "Saltus ONE Presents",
+    name: "DX Forward Jordan 2027",
+    tagline: "From Idea to Execution",
+    dateLine: "10 April 2027 · Amman",
+    cta: "Visit the Forum",
+  },
   stats: [
     { value: "25+", label: "Years of Experience" },
     { value: "2,000+", label: "Projects Delivered" },
