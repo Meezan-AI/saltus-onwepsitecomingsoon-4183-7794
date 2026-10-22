@@ -53,9 +53,16 @@ export function DxForwardPromo({ compact = false }: { compact?: boolean }) {
           </span>
         </div>
 
-        <p className="text-sm font-bold leading-tight text-white">{t.dxForward.name}</p>
-        <p className="mt-0.5 text-xs font-medium text-[#20E3C2]">{t.dxForward.tagline}</p>
-        <p className="mt-2 text-xs text-white/60">{t.dxForward.dateLine}</p>
+        <img
+          src="/images/dx-forward-logo.png"
+          alt={t.dxForward.name}
+          width={682}
+          height={700}
+          className={`mx-auto h-auto ${compact ? "w-20" : "w-24"}`}
+        />
+
+        <p className="mt-2 text-center text-xs font-medium text-[#20E3C2]">{t.dxForward.tagline}</p>
+        <p className="mt-1 text-center text-xs text-white/60">{t.dxForward.dateLine}</p>
 
         <a
           href="https://dxforwardjo.com"
