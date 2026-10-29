@@ -1,9 +1,10 @@
-import { and, asc, eq, like, or } from "drizzle-orm";
+import { and, asc, eq, inArray, like, or } from "drizzle-orm";
 import { z } from "zod";
 import { ORPCError } from "@orpc/server";
 import { base } from "../../__core/app";
 import { db } from "../../database";
 import * as schema from "../../database/schema";
+import { publicUrl } from "../../lib/s3";
 
 /**
  * Public storefront catalog — categories and products, no auth required.
@@ -48,7 +49,7 @@ export const catalog = {
         const where = and(...filters);
         const offset = (input.page - 1) * input.pageSize;
 
-        const [items, totalRows] = await Promise.all([
+        const [rows, totalRows] = await Promise.all([
           db
             .select()
             .from(schema.products)
@@ -58,6 +59,42 @@ export const catalog = {
             .offset(offset),
           db.select({ id: schema.products.id }).from(schema.products).where(where),
         ]);
+
+        const productIds = rows.map((p) => p.id);
+        const [images, variants] = productIds.length
+          ? await Promise.all([
+              db
+                .select()
+                .from(schema.productImages)
+                .where(inArray(schema.productImages.productId, productIds))
+                .orderBy(asc(schema.productImages.sortOrder)),
+              db
+                .select()
+                .from(schema.productVariants)
+                .where(
+                  and(
+                    inArray(schema.productVariants.productId, productIds),
+                    eq(schema.productVariants.isActive, true),
+                  ),
+                ),
+            ])
+          : [[], []];
+
+        // One cheap image + the lowest active variant price per card — the grid never
+        // needs the full image gallery or every variant, just enough to render a card.
+        const items = rows.map((product) => {
+          const cover = images.find((img) => img.productId === product.id);
+          const productVariants = variants.filter((v) => v.productId === product.id);
+          const minPriceCents = productVariants.length
+            ? Math.min(...productVariants.map((v) => v.priceCents))
+            : null;
+          return {
+            ...product,
+            coverImageUrl: cover ? publicUrl(cover.s3Key) : null,
+            minPriceCents,
+            currency: productVariants[0]?.currency ?? "JOD",
+          };
+        });
 
         return { items, total: totalRows.length, page: input.page, pageSize: input.pageSize };
       }),
@@ -78,7 +115,11 @@ export const catalog = {
           .where(and(eq(schema.productVariants.productId, product.id), eq(schema.productVariants.isActive, true))),
       ]);
 
-      return { ...product, images, variants };
+      return {
+        ...product,
+        images: images.map((img) => ({ ...img, url: publicUrl(img.s3Key) })),
+        variants,
+      };
     }),
   },
 };

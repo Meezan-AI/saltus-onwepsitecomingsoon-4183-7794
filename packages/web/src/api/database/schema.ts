@@ -94,6 +94,8 @@ export const productVariants = sqliteTable("product_variants", {
     .references(() => products.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   sku: text("sku"),
+  /** All `*Cents` money columns in this schema store the smallest currency subunit —
+   *  for JOD (the only currency in v1) that's fils, 1000 per dinar, e.g. 45000 = 45.000 JOD. */
   priceCents: integer("price_cents").notNull(),
   currency: text("currency").notNull().default("JOD"),
   /** null = unlimited / not stock-tracked */

@@ -13,6 +13,7 @@ export function Footer() {
     { label: t.nav.conferences, href: "/conferences-exhibitions" },
     { label: t.nav.portfolio, href: "/portfolio" },
     { label: t.nav.insights, href: "/insights" },
+    { label: t.nav.marketplace, href: "/marketplace" },
     { label: t.nav.about, href: "/about" },
     { label: t.nav.contact, href: "/contact" },
   ];

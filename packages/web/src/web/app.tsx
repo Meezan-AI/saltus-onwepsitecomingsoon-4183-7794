@@ -14,6 +14,8 @@ const InsightsPage = lazy(() => import("./pages/insights"));
 const InsightPage = lazy(() => import("./pages/insight"));
 const ServicePage = lazy(() => import("./pages/service"));
 const BusinessCardPage = lazy(() => import("./pages/business-card"));
+const MarketplacePage = lazy(() => import("./pages/marketplace"));
+const MarketplaceProductPage = lazy(() => import("./pages/marketplace-product"));
 import { Provider } from "./components/provider";
 import { AgentFeedback } from "@runablehq/website-runtime";
 import { WhatsAppButton } from "./components/whatsapp-button";
@@ -57,6 +59,8 @@ function App() {
             <Route path="/about" component={AboutPage} />
             <Route path="/contact" component={ContactPage} />
             <Route path="/business-card" component={BusinessCardPage} />
+            <Route path="/marketplace" component={MarketplacePage} />
+            <Route path="/marketplace/product/:slug" component={MarketplaceProductPage} />
             <Route component={Index} />
           </Switch>
         </Suspense>

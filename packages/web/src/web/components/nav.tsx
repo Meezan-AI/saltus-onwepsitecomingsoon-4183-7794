@@ -16,6 +16,7 @@ export function Nav() {
     { label: t.nav.conferences, href: "/conferences-exhibitions" },
     { label: t.nav.portfolio, href: "/portfolio" },
     { label: t.nav.insights, href: "/insights" },
+    { label: t.nav.marketplace, href: "/marketplace" },
     { label: t.nav.about, href: "/about" },
     { label: t.nav.contact, href: "/contact" },
   ];
@@ -42,14 +43,14 @@ export function Nav() {
           <BrandWordmark className="text-xl font-bold tracking-tight" />
         </Link>
 
-        <nav className="hidden items-center gap-7 xl:flex">
+        <nav className="hidden items-center gap-4 2xl:gap-7 xl:flex">
           {links.map((l) => {
-            const active = location === l.href;
+            const active = l.href === "/" ? location === "/" : location.startsWith(l.href);
             return (
               <Link
                 key={l.href}
                 href={l.href}
-                className={`text-sm font-medium transition-colors ${
+                className={`whitespace-nowrap text-[13px] font-medium transition-colors 2xl:text-sm ${
                   active ? "text-[#FF6B00]" : "text-white/70 hover:text-white"
                 }`}
               >

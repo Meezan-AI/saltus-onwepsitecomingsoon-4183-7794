@@ -40,6 +40,7 @@ export type Content = {
     conferences: string;
     portfolio: string;
     insights: string;
+    marketplace: string;
     about: string;
     contact: string;
     catalog: string;
@@ -274,5 +275,42 @@ export type Content = {
     relatedTitle: string;
     backToServices: string;
     talkToTeam: string;
+  };
+  marketplace: {
+    meta: { title: string; desc: string; keywords: string };
+    eyebrow: string;
+    title: string;
+    desc: string;
+    searchPlaceholder: string;
+    allCategories: string;
+    clearFilters: string;
+    resultsCount: string;
+    noResultsTitle: string;
+    noResultsDesc: string;
+    loadMore: string;
+    pagePrev: string;
+    pageNext: string;
+    pageOf: string;
+    card: {
+      startingFrom: string;
+      directPurchase: string;
+      requestQuote: string;
+      viewDetails: string;
+    };
+    product: {
+      backToMarketplace: string;
+      sku: string;
+      descriptionTitle: string;
+      specsTitle: string;
+      optionsTitle: string;
+      priceFrom: string;
+      directPurchaseBadge: string;
+      rfqBadge: string;
+      comingSoonTitle: string;
+      comingSoonDesc: string;
+      contactCta: string;
+      notFoundTitle: string;
+      notFoundDesc: string;
+    };
   };
 };
