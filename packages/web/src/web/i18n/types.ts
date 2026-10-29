@@ -474,6 +474,27 @@ export type Content = {
       changes_requested: string;
       not_required: string;
     };
+    designUpload: {
+      title: string;
+      allowedTypes: string;
+      maxSize: string;
+      chooseFiles: string;
+      filesSelected: string;
+      upload: string;
+      uploading: string;
+      error: string;
+      errorType: string;
+      errorSize: string;
+      uploadedFiles: string;
+      viewFile: string;
+      version: string;
+      reupload: string;
+      waitingReview: string;
+      approvedNotice: string;
+      changesRequestedNotice: string;
+      reviewerNoteLabel: string;
+      notRequiredNotice: string;
+    };
   };
   cart: {
     meta: { title: string; desc: string; keywords: string };

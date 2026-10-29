@@ -29,15 +29,27 @@ export const designs = {
       .orderBy(desc(schema.designFiles.version));
   }),
 
-  /** Records a file already uploaded to Tigris (see uploads.presignDesignFile) as a new version. */
+  /**
+   * Records one or more files already uploaded to Tigris (see uploads.presignDesignFile)
+   * as a single new version — e.g. a front + back artwork pair for one t-shirt line item.
+   * All files in the call share the same version number and are reviewed together
+   * (see admin/design-reviews.ts#review), since they represent one design submission.
+   */
   submit: authed
     .input(
       z.object({
         orderItemId: z.number(),
-        s3Key: z.string(),
-        fileName: z.string(),
-        mimeType: z.string().optional(),
-        sizeBytes: z.number().optional(),
+        files: z
+          .array(
+            z.object({
+              s3Key: z.string(),
+              fileName: z.string(),
+              mimeType: z.string().optional(),
+              sizeBytes: z.number().optional(),
+            }),
+          )
+          .min(1)
+          .max(10),
       }),
     )
     .handler(async ({ context, input }) => {
@@ -51,18 +63,20 @@ export const designs = {
         .limit(1);
       const nextVersion = (previous[0]?.version ?? 0) + 1;
 
-      const [file] = await db
+      const inserted = await db
         .insert(schema.designFiles)
-        .values({
-          orderItemId: input.orderItemId,
-          s3Key: input.s3Key,
-          fileName: input.fileName,
-          mimeType: input.mimeType,
-          sizeBytes: input.sizeBytes,
-          version: nextVersion,
-          uploadedBy: context.user.id,
-          status: "submitted",
-        })
+        .values(
+          input.files.map((f) => ({
+            orderItemId: input.orderItemId,
+            s3Key: f.s3Key,
+            fileName: f.fileName,
+            mimeType: f.mimeType,
+            sizeBytes: f.sizeBytes,
+            version: nextVersion,
+            uploadedBy: context.user.id,
+            status: "submitted" as const,
+          })),
+        )
         .returning();
 
       await db.update(schema.orderItems).set({ designStatus: "submitted" }).where(eq(schema.orderItems.id, item.id));
@@ -73,6 +87,6 @@ export const designs = {
         await db.update(schema.orders).set({ status: "design_in_review" }).where(eq(schema.orders.id, order.id));
       }
 
-      return file;
+      return inserted;
     }),
 };

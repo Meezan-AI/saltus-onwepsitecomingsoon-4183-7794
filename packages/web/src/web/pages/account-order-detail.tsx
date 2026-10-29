@@ -5,6 +5,7 @@ import { Seo } from "../components/seo";
 import { Nav } from "../components/nav";
 import { Footer } from "../components/footer";
 import { ProtectedRoute } from "../components/marketplace/protected-route";
+import { DesignUploader } from "../components/marketplace/design-uploader";
 import { StatusBadge, designStatusTone, orderStatusTone } from "../components/marketplace/status-badge";
 import { useCancelOrder, useOrder } from "../queries/orders";
 import { formatPriceCents } from "../lib/money";
@@ -152,6 +153,7 @@ function OrderDetailContent() {
                         </span>
                       </span>
                     </div>
+                    <DesignUploader orderItemId={item.id} designStatus={item.designStatus} />
                   </div>
                 );
               })}

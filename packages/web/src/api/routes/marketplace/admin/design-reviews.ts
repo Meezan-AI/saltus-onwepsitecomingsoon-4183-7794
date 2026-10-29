@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { ORPCError } from "@orpc/server";
 import { adminOnly } from "../../../middleware/auth";
@@ -62,17 +62,27 @@ export const designReviews = {
     return item;
   }),
 
+  /**
+   * One design submission can carry several files sharing the same version (e.g. a
+   * t-shirt's front + back artwork) — reviewed as one unit, not file by file.
+   */
   review: adminOnly
     .input(
       z.object({
-        designFileId: z.number(),
+        orderItemId: z.number(),
+        version: z.number(),
         decision: z.enum(["approved", "changes_requested"]),
         reviewerNote: z.string().max(2000).optional(),
       }),
     )
     .handler(async ({ context, input }) => {
-      const [file] = await db.select().from(schema.designFiles).where(eq(schema.designFiles.id, input.designFileId));
-      if (!file) throw new ORPCError("NOT_FOUND");
+      const files = await db
+        .select()
+        .from(schema.designFiles)
+        .where(
+          and(eq(schema.designFiles.orderItemId, input.orderItemId), eq(schema.designFiles.version, input.version)),
+        );
+      if (!files.length) throw new ORPCError("NOT_FOUND");
 
       await db
         .update(schema.designFiles)
@@ -82,12 +92,14 @@ export const designReviews = {
           reviewedBy: context.user.id,
           reviewedAt: new Date(),
         })
-        .where(eq(schema.designFiles.id, file.id));
+        .where(
+          and(eq(schema.designFiles.orderItemId, input.orderItemId), eq(schema.designFiles.version, input.version)),
+        );
 
       const [item] = await db
         .update(schema.orderItems)
         .set({ designStatus: input.decision })
-        .where(eq(schema.orderItems.id, file.orderItemId))
+        .where(eq(schema.orderItems.id, input.orderItemId))
         .returning();
       if (!item) throw new ORPCError("NOT_FOUND");
 
