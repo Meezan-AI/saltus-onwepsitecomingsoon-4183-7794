@@ -12,18 +12,45 @@ function generateOrderNumber() {
   return `SO-${stamp}-${random}`;
 }
 
+/** Joins the product/variant onto a request row so the UI can show a name without a second round-trip. */
+async function rfqWithProduct(requestId: number) {
+  const [row] = await db
+    .select({
+      request: schema.rfqRequests,
+      product: schema.products,
+      variant: schema.productVariants,
+    })
+    .from(schema.rfqRequests)
+    .innerJoin(schema.products, eq(schema.rfqRequests.productId, schema.products.id))
+    .leftJoin(schema.productVariants, eq(schema.rfqRequests.variantId, schema.productVariants.id))
+    .where(eq(schema.rfqRequests.id, requestId));
+  if (!row) return null;
+  return { ...row.request, product: row.product, variant: row.variant };
+}
+
 /**
  * Quote requests (RFQ) — report section 7. Admin responds from
  * routes/marketplace/admin/rfqs.ts; this file is the customer-facing half:
  * submit a request, track it, accept or decline the quoted price.
  */
 export const rfq = {
-  list: authed.handler(({ context }) =>
-    db.select().from(schema.rfqRequests).where(eq(schema.rfqRequests.userId, context.user.id)).orderBy(desc(schema.rfqRequests.id)),
-  ),
+  list: authed.handler(async ({ context }) => {
+    const rows = await db
+      .select({
+        request: schema.rfqRequests,
+        product: schema.products,
+        variant: schema.productVariants,
+      })
+      .from(schema.rfqRequests)
+      .innerJoin(schema.products, eq(schema.rfqRequests.productId, schema.products.id))
+      .leftJoin(schema.productVariants, eq(schema.rfqRequests.variantId, schema.productVariants.id))
+      .where(eq(schema.rfqRequests.userId, context.user.id))
+      .orderBy(desc(schema.rfqRequests.id));
+    return rows.map((row) => ({ ...row.request, product: row.product, variant: row.variant }));
+  }),
 
   get: authed.input(z.object({ id: z.number() })).handler(async ({ context, input }) => {
-    const [request] = await db.select().from(schema.rfqRequests).where(eq(schema.rfqRequests.id, input.id));
+    const request = await rfqWithProduct(input.id);
     if (!request || request.userId !== context.user.id) throw new ORPCError("NOT_FOUND");
     return request;
   }),

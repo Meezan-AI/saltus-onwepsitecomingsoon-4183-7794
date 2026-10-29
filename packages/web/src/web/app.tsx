@@ -16,6 +16,17 @@ const ServicePage = lazy(() => import("./pages/service"));
 const BusinessCardPage = lazy(() => import("./pages/business-card"));
 const MarketplacePage = lazy(() => import("./pages/marketplace"));
 const MarketplaceProductPage = lazy(() => import("./pages/marketplace-product"));
+const MarketplaceCartPage = lazy(() => import("./pages/marketplace-cart"));
+const MarketplaceCheckoutPage = lazy(() => import("./pages/marketplace-checkout"));
+const MarketplaceCheckoutConfirmationPage = lazy(() => import("./pages/marketplace-checkout-confirmation"));
+const MarketplaceRfqPage = lazy(() => import("./pages/marketplace-rfq"));
+const AccountLoginPage = lazy(() => import("./pages/account-login"));
+const AccountRegisterPage = lazy(() => import("./pages/account-register"));
+const AccountOrdersPage = lazy(() => import("./pages/account-orders"));
+const AccountOrderDetailPage = lazy(() => import("./pages/account-order-detail"));
+const AccountRfqsPage = lazy(() => import("./pages/account-rfqs"));
+const AccountRfqDetailPage = lazy(() => import("./pages/account-rfq-detail"));
+const AccountAddressesPage = lazy(() => import("./pages/account-addresses"));
 import { Provider } from "./components/provider";
 import { AgentFeedback } from "@runablehq/website-runtime";
 import { WhatsAppButton } from "./components/whatsapp-button";
@@ -61,6 +72,17 @@ function App() {
             <Route path="/business-card" component={BusinessCardPage} />
             <Route path="/marketplace" component={MarketplacePage} />
             <Route path="/marketplace/product/:slug" component={MarketplaceProductPage} />
+            <Route path="/marketplace/cart" component={MarketplaceCartPage} />
+            <Route path="/marketplace/checkout" component={MarketplaceCheckoutPage} />
+            <Route path="/marketplace/checkout/confirmation" component={MarketplaceCheckoutConfirmationPage} />
+            <Route path="/marketplace/rfq/:productSlug" component={MarketplaceRfqPage} />
+            <Route path="/account/login" component={AccountLoginPage} />
+            <Route path="/account/register" component={AccountRegisterPage} />
+            <Route path="/account/orders" component={AccountOrdersPage} />
+            <Route path="/account/orders/:orderNumber" component={AccountOrderDetailPage} />
+            <Route path="/account/rfqs" component={AccountRfqsPage} />
+            <Route path="/account/rfqs/:id" component={AccountRfqDetailPage} />
+            <Route path="/account/addresses" component={AccountAddressesPage} />
             <Route component={Index} />
           </Switch>
         </Suspense>

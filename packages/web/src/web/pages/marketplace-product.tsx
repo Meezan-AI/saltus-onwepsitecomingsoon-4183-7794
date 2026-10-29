@@ -1,19 +1,27 @@
 import { useState } from "react";
-import { Link, useParams } from "wouter";
-import { ArrowLeft, ArrowRight, ImageOff, Loader2, MessageCircle } from "lucide-react";
+import { Link, useParams, useLocation } from "wouter";
+import { ArrowLeft, ArrowRight, Check, ImageOff, Loader2, Minus, Plus, FileText } from "lucide-react";
 import { Seo, SITE_URL } from "../components/seo";
 import { Nav } from "../components/nav";
 import { Footer } from "../components/footer";
 import { useProduct } from "../queries/catalog";
+import { useSession } from "../queries/account";
+import { useAddToCart } from "../queries/cart";
 import { formatPriceCents } from "../lib/money";
 import { useLang } from "../i18n";
-import { WHATSAPP_URL } from "../lib/contact";
 
 export default function MarketplaceProductPage() {
   const { slug } = useParams<{ slug: string }>();
   const { t, lang, dir } = useLang();
+  const [, navigate] = useLocation();
   const query = useProduct(slug);
   const [activeImage, setActiveImage] = useState(0);
+  const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
+  const [qty, setQty] = useState(1);
+  const [justAdded, setJustAdded] = useState(false);
+
+  const { data: session } = useSession();
+  const addToCart = useAddToCart();
 
   if (query.isLoading) {
     return (
@@ -55,6 +63,23 @@ export default function MarketplaceProductPage() {
     ? Math.min(...product.variants.map((v) => v.priceCents))
     : null;
   const currency = product.variants[0]?.currency ?? "JOD";
+  const activeVariantId = selectedVariantId ?? product.variants[0]?.id ?? null;
+  const activeVariant = product.variants.find((v) => v.id === activeVariantId) ?? null;
+
+  const redirectTarget = `/marketplace/product/${product.slug}`;
+  const loginHref = `/account/login?redirect=${encodeURIComponent(redirectTarget)}`;
+  const rfqHref = `/marketplace/rfq/${product.slug}`;
+
+  async function handleAddToCart() {
+    if (!activeVariantId) return;
+    setJustAdded(false);
+    try {
+      await addToCart.mutateAsync({ productId: product.id, variantId: activeVariantId, qty });
+      setJustAdded(true);
+    } catch {
+      setJustAdded(false);
+    }
+  }
 
   return (
     <div className="min-h-[100svh] bg-[#0b1f3a]">
@@ -166,39 +191,119 @@ export default function MarketplaceProductPage() {
                   </h2>
                   <div className="mt-3 space-y-2">
                     {product.variants.map((v) => (
-                      <div
+                      <button
                         key={v.id}
-                        className="glass-card flex items-center justify-between rounded-xl px-4 py-3 text-sm"
+                        type="button"
+                        onClick={() => setSelectedVariantId(v.id)}
+                        className={`glass-card flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm text-start transition-colors ${
+                          v.id === activeVariantId ? "border border-[#FF6B00]" : "border border-transparent"
+                        }`}
                       >
                         <span className="text-white">
                           {v.name}
-                          {v.rentalUnit && (
-                            <span className="ms-2 text-xs text-[#B9C2D0]/60">
-                              / {v.rentalUnit}
-                            </span>
-                          )}
+                          {v.rentalUnit && <span className="ms-2 text-xs text-[#B9C2D0]/60">/ {v.rentalUnit}</span>}
                         </span>
-                        <span className="font-semibold text-[#FF8A3D]">
-                          {formatPriceCents(v.priceCents, v.currency)}
-                        </span>
-                      </div>
+                        <span className="font-semibold text-[#FF8A3D]">{formatPriceCents(v.priceCents, v.currency)}</span>
+                      </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="glass-card mt-10 rounded-2xl p-6">
-                <p className="font-display text-base font-bold text-white">{t.marketplace.product.comingSoonTitle}</p>
-                <p className="mt-2 text-sm leading-relaxed text-[#B9C2D0]">{t.marketplace.product.comingSoonDesc}</p>
-                <a
-                  href={WHATSAPP_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#FF6B00] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#FF8A3D]"
-                >
-                  <MessageCircle size={16} />
-                  {t.marketplace.product.contactCta}
-                </a>
+              {/* Purchase / RFQ actions */}
+              <div className="glass-card mt-10 space-y-5 rounded-2xl p-6">
+                {product.allowDirectPurchase && (
+                  <div>
+                    {!session ? (
+                      <div>
+                        <p className="text-sm text-[#B9C2D0]">{t.marketplace.product.signInToBuy}</p>
+                        <button
+                          onClick={() => navigate(loginHref)}
+                          className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#FF6B00] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#FF8A3D]"
+                        >
+                          {t.marketplace.product.signInCta}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-white/60">
+                            {t.marketplace.product.qtyLabel}
+                          </span>
+                          <div className="flex items-center gap-2 rounded-full border border-white/15 px-2 py-1">
+                            <button
+                              type="button"
+                              onClick={() => setQty((q) => Math.max(1, q - 1))}
+                              className="flex h-7 w-7 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                              aria-label="-"
+                            >
+                              <Minus size={14} />
+                            </button>
+                            <span className="w-8 text-center text-sm font-semibold text-white">{qty}</span>
+                            <button
+                              type="button"
+                              onClick={() => setQty((q) => q + 1)}
+                              className="flex h-7 w-7 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                              aria-label="+"
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {justAdded ? (
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center gap-1.5 text-sm font-semibold text-[#6FE3A8]">
+                              <Check size={16} />
+                              {t.marketplace.product.addedToCart}
+                            </span>
+                            <button
+                              onClick={() => navigate("/marketplace/cart")}
+                              className="rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                            >
+                              {t.marketplace.product.viewCart}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={handleAddToCart}
+                            disabled={!activeVariant || addToCart.isPending}
+                            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#FF6B00] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#FF8A3D] disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {addToCart.isPending ? (
+                              <>
+                                <Loader2 size={16} className="animate-spin" />
+                                {t.marketplace.product.addingToCart}
+                              </>
+                            ) : (
+                              t.marketplace.product.buyNow
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {addToCart.isError && (
+                      <p className="mt-2 text-xs text-[#FF8A8A]">{t.marketplace.product.addToCartError}</p>
+                    )}
+                  </div>
+                )}
+
+                {product.allowDirectPurchase && product.allowRfq && (
+                  <div className="h-px w-full bg-white/10" />
+                )}
+
+                {product.allowRfq && (
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-[#B9C2D0]">{t.marketplace.product.requestQuoteCta}</p>
+                    <Link
+                      href={rfqHref}
+                      className="inline-flex flex-shrink-0 items-center gap-2 rounded-full border border-[#FF6B00] px-6 py-3 text-sm font-semibold text-[#FF6B00] transition-colors hover:bg-[#FF6B00]/10"
+                    >
+                      <FileText size={16} />
+                      {t.marketplace.product.requestQuoteCta}
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
           </div>
