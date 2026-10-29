@@ -39,7 +39,7 @@ describe("admin/roles (report item 9 — RBAC)", () => {
     const admin = await seedUser(db, { role: "admin" }); // no role assigned at all
     const headers = sessionHeaders(admin);
     const list = await call(roles.permissions.list, undefined, { context: { headers } });
-    expect(list.length).toBe(9);
+    expect(list.length).toBe(10);
   });
 
   it("create/update/setPermissions require the manage_admins permission, not just adminOnly", async () => {

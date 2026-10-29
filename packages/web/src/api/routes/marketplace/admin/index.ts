@@ -7,6 +7,7 @@ import { productOptions } from "./product-options";
 import { rfqs } from "./rfqs";
 import { suppliers } from "./suppliers";
 import { roles } from "./roles";
+import { auditLog } from "./audit-log";
 
 /** Admin dashboard API — report section 4. Composition only; logic lives in the sibling files. */
 export const admin = {
@@ -19,4 +20,5 @@ export const admin = {
   customers,
   suppliers,
   roles,
+  auditLog,
 };

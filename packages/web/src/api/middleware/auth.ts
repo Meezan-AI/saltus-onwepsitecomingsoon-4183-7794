@@ -41,3 +41,22 @@ export function requirePermission(key: string) {
     return next({ context });
   });
 }
+
+/**
+ * Same as `requirePermission`, but passes if the user holds ANY of the given
+ * keys — e.g. a product's basic fields can be edited by someone with the
+ * broad `manage_products` permission or by a content editor who only holds
+ * the narrower `edit_product_content`. The handler itself still has to
+ * check `context.permissions` to decide which fields that specific caller
+ * is allowed to touch; this middleware only rejects callers with neither.
+ */
+export function requireAnyPermission(keys: string[]) {
+  return adminOnly.use(async ({ context, next }) => {
+    const granted = await Promise.all(keys.map((key) => userHasPermission(context.user.id, key)));
+    const grantedKeys = keys.filter((_, i) => granted[i]);
+    if (grantedKeys.length === 0) {
+      throw new ORPCError("FORBIDDEN", { message: `Missing permission: one of ${keys.join(", ")}` });
+    }
+    return next({ context: { ...context, permissions: grantedKeys } });
+  });
+}

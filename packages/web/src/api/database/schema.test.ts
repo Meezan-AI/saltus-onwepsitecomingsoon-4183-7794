@@ -10,14 +10,22 @@ describe("admin-foundation schema (report items 3, 4, 8, 9)", () => {
     ctx = await createTestDb();
   });
 
-  it("seeds the RBAC catalog via migration 0002 (permissions + roles + role_permissions)", async () => {
+  it("seeds the RBAC catalog via migrations 0002 + 0004 (permissions + roles + role_permissions)", async () => {
     const { db } = ctx;
     const permissions = await db.select().from(schema.permissions);
-    expect(permissions.length).toBe(9);
+    expect(permissions.length).toBe(10);
     expect(permissions.map((p) => p.key)).toContain("manage_suppliers");
+    expect(permissions.map((p) => p.key)).toContain("edit_product_content");
 
     const roles = await db.select().from(schema.roles);
-    expect(roles.map((r) => r.name).sort()).toEqual(["staff", "super_admin"]);
+    expect(roles.map((r) => r.name).sort()).toEqual([
+      "accounting",
+      "content_editor",
+      "manager",
+      "sales",
+      "staff",
+      "super_admin",
+    ]);
     const superAdmin = roles.find((r) => r.name === "super_admin")!;
     expect(superAdmin.isSystem).toBe(true);
 
@@ -26,7 +34,29 @@ describe("admin-foundation schema (report items 3, 4, 8, 9)", () => {
       .from(schema.rolePermissions)
       .innerJoin(schema.permissions, eq(schema.rolePermissions.permissionId, schema.permissions.id))
       .where(eq(schema.rolePermissions.roleId, superAdmin.id));
-    expect(superAdminPerms.length).toBe(9); // super_admin gets every permission
+    expect(superAdminPerms.length).toBe(10); // super_admin gets every permission
+
+    // Supplier confidentiality report: sales and content_editor must NOT hold manage_suppliers.
+    const nonSupplierRoles = roles.filter((r) => ["sales", "content_editor"].includes(r.name));
+    for (const role of nonSupplierRoles) {
+      const perms = await db
+        .select({ key: schema.permissions.key })
+        .from(schema.rolePermissions)
+        .innerJoin(schema.permissions, eq(schema.rolePermissions.permissionId, schema.permissions.id))
+        .where(eq(schema.rolePermissions.roleId, role.id));
+      expect(perms.map((p) => p.key)).not.toContain("manage_suppliers");
+    }
+
+    // manager and accounting are the only roles trusted with supplier data (besides super_admin).
+    const supplierRoles = roles.filter((r) => ["manager", "accounting"].includes(r.name));
+    for (const role of supplierRoles) {
+      const perms = await db
+        .select({ key: schema.permissions.key })
+        .from(schema.rolePermissions)
+        .innerJoin(schema.permissions, eq(schema.rolePermissions.permissionId, schema.permissions.id))
+        .where(eq(schema.rolePermissions.roleId, role.id));
+      expect(perms.map((p) => p.key)).toContain("manage_suppliers");
+    }
   });
 
   it("product_option_groups/values: creates groups+values and cascades on product delete", async () => {

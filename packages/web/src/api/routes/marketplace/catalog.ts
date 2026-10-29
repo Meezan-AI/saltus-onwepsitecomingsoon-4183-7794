@@ -7,6 +7,33 @@ import * as schema from "../../database/schema";
 import { publicUrl } from "../../lib/s3";
 
 /**
+ * Explicit public-safe column list for a storefront product (supplier
+ * confidentiality report, requirement 10) — every field a customer is
+ * allowed to see, and nothing else. This is deliberately NOT `select()`
+ * (which would return every column `products` ever grows) specifically so
+ * that if a supplier-identifying column is ever added to `products` by
+ * mistake, it does not silently start appearing on the storefront: this
+ * list has to be edited on purpose first. Supplier id/name/contact/cost/
+ * SKU/notes live on separate tables (`suppliers`, `product_suppliers`)
+ * that this file never joins or imports at all — see admin/suppliers.ts.
+ */
+const PUBLIC_PRODUCT_COLUMNS = {
+  id: schema.products.id,
+  sku: schema.products.sku,
+  slug: schema.products.slug,
+  nameEn: schema.products.nameEn,
+  nameAr: schema.products.nameAr,
+  descriptionEn: schema.products.descriptionEn,
+  descriptionAr: schema.products.descriptionAr,
+  categoryId: schema.products.categoryId,
+  type: schema.products.type,
+  fulfillmentType: schema.products.fulfillmentType,
+  allowDirectPurchase: schema.products.allowDirectPurchase,
+  allowRfq: schema.products.allowRfq,
+  isActive: schema.products.isActive,
+};
+
+/**
  * Public storefront catalog — categories and products, no auth required.
  * Mirrors report section 3 (storefront pages).
  */
@@ -51,7 +78,7 @@ export const catalog = {
 
         const [rows, totalRows] = await Promise.all([
           db
-            .select()
+            .select(PUBLIC_PRODUCT_COLUMNS)
             .from(schema.products)
             .where(where)
             .orderBy(asc(schema.products.id))
@@ -100,7 +127,7 @@ export const catalog = {
       }),
 
     get: base.input(z.object({ slug: z.string() })).handler(async ({ input }) => {
-      const [product] = await db.select().from(schema.products).where(eq(schema.products.slug, input.slug));
+      const [product] = await db.select(PUBLIC_PRODUCT_COLUMNS).from(schema.products).where(eq(schema.products.slug, input.slug));
       if (!product || !product.isActive) throw new ORPCError("NOT_FOUND", { message: "Product not found" });
 
       const [images, variants] = await Promise.all([

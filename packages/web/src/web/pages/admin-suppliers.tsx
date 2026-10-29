@@ -139,7 +139,7 @@ export default function AdminSuppliersPage() {
     document.title = "Suppliers — Admin — Saltus ONE";
   }, []);
   return (
-    <AdminProtectedRoute>
+    <AdminProtectedRoute permission="manage_suppliers">
       <SuppliersContent />
     </AdminProtectedRoute>
   );

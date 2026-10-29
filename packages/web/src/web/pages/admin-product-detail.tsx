@@ -33,6 +33,7 @@ import {
   useUnlinkSupplierProduct,
 } from "../queries/admin-suppliers";
 import { formatCents } from "../lib/admin-format";
+import { useMyPermissions } from "../queries/account";
 
 function ProductBasicInfo({ product, categories }: { product: NonNullable<ReturnType<typeof useAdminProduct>["data"]>; categories: ReturnType<typeof useAdminCategories>["data"] }) {
   const update = useUpdateProduct();
@@ -353,6 +354,12 @@ function SuppliersSection({ productId }: { productId: number }) {
 function ProductDetailContent({ id }: { id: number }) {
   const product = useAdminProduct(id);
   const categories = useAdminCategories();
+  const { data: permissions } = useMyPermissions();
+  // Supplier identity/cost/contact/notes are confidential: only show this
+  // section to admins whose role actually holds manage_suppliers (manager,
+  // accounting, super_admin) — a content_editor or sales admin never sees
+  // it, matching the server-side gate on every suppliers.* endpoint.
+  const canSeeSuppliers = (permissions ?? []).includes("manage_suppliers");
 
   if (product.isPending || !product.data) {
     return (
@@ -369,7 +376,7 @@ function ProductDetailContent({ id }: { id: number }) {
         <ImagesSection productId={id} images={product.data.images} />
         <VariantsSection productId={id} variants={product.data.variants} />
         <OptionsSection productId={id} />
-        <SuppliersSection productId={id} />
+        {canSeeSuppliers && <SuppliersSection productId={id} />}
       </div>
     </AdminLayout>
   );

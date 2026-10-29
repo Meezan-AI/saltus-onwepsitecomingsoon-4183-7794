@@ -14,26 +14,32 @@ import {
   Menu,
   X,
 } from "lucide-react";
-import { useMe } from "../../queries/account";
+import { useMe, useMyPermissions } from "../../queries/account";
 import { signOut } from "../../lib/auth";
 import { BrandWordmark } from "../brand-wordmark";
 
-const NAV = [
+// `permission` gates a nav item from view for roles that don't hold it — a
+// sales or content_editor admin should never even see "Suppliers" in the
+// sidebar, since they'd only get a 403 wall from every action on that page.
+// Items without `permission` are visible to every admin.
+const NAV: { label: string; href: string; icon: typeof LayoutDashboard; permission?: string }[] = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-  { label: "Orders", href: "/admin/orders", icon: ClipboardList },
-  { label: "Design Reviews", href: "/admin/design-reviews", icon: FileCheck2 },
-  { label: "RFQs", href: "/admin/rfqs", icon: FileSignature },
+  { label: "Orders", href: "/admin/orders", icon: ClipboardList, permission: "manage_orders" },
+  { label: "Design Reviews", href: "/admin/design-reviews", icon: FileCheck2, permission: "manage_design_reviews" },
+  { label: "RFQs", href: "/admin/rfqs", icon: FileSignature, permission: "manage_rfqs" },
   { label: "Products", href: "/admin/products", icon: Package },
-  { label: "Categories", href: "/admin/categories", icon: Tags },
-  { label: "Suppliers", href: "/admin/suppliers", icon: Truck },
-  { label: "Customers", href: "/admin/customers", icon: Users },
-  { label: "Roles & Permissions", href: "/admin/roles", icon: ShieldCheck },
+  { label: "Categories", href: "/admin/categories", icon: Tags, permission: "manage_categories" },
+  { label: "Suppliers", href: "/admin/suppliers", icon: Truck, permission: "manage_suppliers" },
+  { label: "Customers", href: "/admin/customers", icon: Users, permission: "manage_customers" },
+  { label: "Roles & Permissions", href: "/admin/roles", icon: ShieldCheck, permission: "manage_admins" },
 ];
 
 export function AdminLayout({ title, children }: { title: string; children: ReactNode }) {
   const [location, navigate] = useLocation();
   const [open, setOpen] = useState(false);
   const { data: me } = useMe();
+  const { data: permissions } = useMyPermissions();
+  const visibleNav = NAV.filter((item) => !item.permission || (permissions ?? []).includes(item.permission));
 
   useEffect(() => setOpen(false), [location]);
 
@@ -64,7 +70,7 @@ export function AdminLayout({ title, children }: { title: string; children: Reac
             <BrandWordmark className="h-8 w-32" />
           </Link>
           <nav className="flex flex-1 flex-col gap-1">
-            {NAV.map((item) => {
+            {visibleNav.map((item) => {
               const active = item.href === "/admin" ? location === "/admin" : location.startsWith(item.href);
               const Icon = item.icon;
               return (

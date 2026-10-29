@@ -341,6 +341,10 @@ export const suppliers = sqliteTable("suppliers", {
   phone: text("phone"),
   address: text("address"),
   notes: text("notes"),
+  /** Geographic area/cities this supplier can deliver or service — internal only. */
+  coverageArea: text("coverage_area"),
+  /** Reference to the signed agreement/contract terms with this supplier — internal only. */
+  agreementRef: text("agreement_ref"),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
@@ -366,6 +370,10 @@ export const productSuppliers = sqliteTable(
     leadTimeDays: integer("lead_time_days"),
     isPreferred: integer("is_preferred", { mode: "boolean" }).notNull().default(false),
     notes: text("notes"),
+    /** The supplier's own part/SKU number for this product — internal only, never the storefront `products.sku`. */
+    supplierSku: text("supplier_sku"),
+    /** Backup supplier to switch to if this one can't fulfil — internal only. */
+    alternativeSupplierId: integer("alternative_supplier_id").references(() => suppliers.id),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -478,5 +486,38 @@ export const userRoles = sqliteTable(
     index("user_roles_user_id_idx").on(table.userId),
     index("user_roles_role_id_idx").on(table.roleId),
     unique("user_roles_user_role_unique").on(table.userId, table.roleId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Audit log — every view or edit of a sensitive internal record (supplier
+// identity, cost, contact, internal notes) is written here by
+// services/audit-log.ts#recordAuditLog, called from admin/suppliers.ts.
+// Append-only: nothing in the app ever updates or deletes a row here.
+// ---------------------------------------------------------------------------
+
+/** One view or mutation of a sensitive admin record — who, what, when. */
+export const auditLogs = sqliteTable(
+  "audit_logs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    actorUserId: text("actor_user_id")
+      .notNull()
+      .references(() => user.id),
+    /** "view" | "create" | "update" | "delete" */
+    action: text("action").notNull(),
+    /** What kind of record was touched, e.g. "supplier", "product_supplier_link". */
+    entityType: text("entity_type").notNull(),
+    /** Null for a list/collection view that isn't about one specific row. */
+    entityId: integer("entity_id"),
+    /** Free-form JSON string with extra context (e.g. which fields changed). */
+    metadata: text("metadata"),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [
+    index("audit_logs_actor_user_id_idx").on(table.actorUserId),
+    index("audit_logs_entity_idx").on(table.entityType, table.entityId),
   ],
 );
