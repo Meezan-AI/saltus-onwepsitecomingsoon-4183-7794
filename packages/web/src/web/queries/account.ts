@@ -12,3 +12,9 @@ export function useMe() {
   const { data: session } = useSession();
   return useQuery(orpc.account.me.queryOptions({ enabled: Boolean(session) }));
 }
+
+/** RBAC permission keys held by the signed-in user — drives admin-UI show/hide, not a security boundary. */
+export function useMyPermissions() {
+  const { data: session } = useSession();
+  return useQuery(orpc.account.myPermissions.queryOptions({ enabled: Boolean(session) }));
+}

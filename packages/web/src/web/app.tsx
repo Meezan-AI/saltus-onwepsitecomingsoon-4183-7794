@@ -27,6 +27,19 @@ const AccountOrderDetailPage = lazy(() => import("./pages/account-order-detail")
 const AccountRfqsPage = lazy(() => import("./pages/account-rfqs"));
 const AccountRfqDetailPage = lazy(() => import("./pages/account-rfq-detail"));
 const AccountAddressesPage = lazy(() => import("./pages/account-addresses"));
+const AdminLoginPage = lazy(() => import("./pages/admin-login"));
+const AdminDashboardPage = lazy(() => import("./pages/admin-dashboard"));
+const AdminOrdersPage = lazy(() => import("./pages/admin-orders"));
+const AdminOrderDetailPage = lazy(() => import("./pages/admin-order-detail"));
+const AdminRfqsPage = lazy(() => import("./pages/admin-rfqs"));
+const AdminRfqDetailPage = lazy(() => import("./pages/admin-rfq-detail"));
+const AdminDesignReviewsPage = lazy(() => import("./pages/admin-design-reviews"));
+const AdminProductsPage = lazy(() => import("./pages/admin-products"));
+const AdminProductDetailPage = lazy(() => import("./pages/admin-product-detail"));
+const AdminCategoriesPage = lazy(() => import("./pages/admin-categories"));
+const AdminSuppliersPage = lazy(() => import("./pages/admin-suppliers"));
+const AdminCustomersPage = lazy(() => import("./pages/admin-customers"));
+const AdminRolesPage = lazy(() => import("./pages/admin-roles"));
 import { Provider } from "./components/provider";
 import { AgentFeedback } from "@runablehq/website-runtime";
 import { WhatsAppButton } from "./components/whatsapp-button";
@@ -83,6 +96,19 @@ function App() {
             <Route path="/account/rfqs" component={AccountRfqsPage} />
             <Route path="/account/rfqs/:id" component={AccountRfqDetailPage} />
             <Route path="/account/addresses" component={AccountAddressesPage} />
+            <Route path="/admin/login" component={AdminLoginPage} />
+            <Route path="/admin" component={AdminDashboardPage} />
+            <Route path="/admin/orders" component={AdminOrdersPage} />
+            <Route path="/admin/orders/:id" component={AdminOrderDetailPage} />
+            <Route path="/admin/rfqs" component={AdminRfqsPage} />
+            <Route path="/admin/rfqs/:id" component={AdminRfqDetailPage} />
+            <Route path="/admin/design-reviews" component={AdminDesignReviewsPage} />
+            <Route path="/admin/products" component={AdminProductsPage} />
+            <Route path="/admin/products/:id" component={AdminProductDetailPage} />
+            <Route path="/admin/categories" component={AdminCategoriesPage} />
+            <Route path="/admin/suppliers" component={AdminSuppliersPage} />
+            <Route path="/admin/customers" component={AdminCustomersPage} />
+            <Route path="/admin/roles" component={AdminRolesPage} />
             <Route component={Index} />
           </Switch>
         </Suspense>

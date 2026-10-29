@@ -4,6 +4,7 @@ import { ORPCError } from "@orpc/server";
 import { adminOnly } from "../../../middleware/auth";
 import { db } from "../../../database";
 import * as schema from "../../../database/schema";
+import { publicUrl } from "../../../lib/s3";
 
 const productInput = z.object({
   sku: z.string().min(1).max(60),
@@ -39,7 +40,7 @@ export const products = {
       db.select().from(schema.productImages).where(eq(schema.productImages.productId, input.id)).orderBy(asc(schema.productImages.sortOrder)),
       db.select().from(schema.productVariants).where(eq(schema.productVariants.productId, input.id)),
     ]);
-    return { ...product, images, variants };
+    return { ...product, images: images.map((img) => ({ ...img, url: publicUrl(img.s3Key) })), variants };
   }),
 
   create: adminOnly.input(productInput).handler(async ({ input }) => {

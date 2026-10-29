@@ -91,4 +91,17 @@ describe("admin/roles (report item 9 — RBAC)", () => {
     const afterUnassign = await call(roles.users.listForUser, { userId: target.id }, { context: { headers } });
     expect(afterUnassign.length).toBe(0);
   });
+
+  it("users.list returns every admin-role user, not customers", async () => {
+    const admin = await adminWithRole("super_admin");
+    const headers = sessionHeaders(admin);
+    const otherAdmin = await seedUser(db, { role: "admin", name: "Other Admin" });
+    const customer = await seedUser(db, { role: "customer", name: "Some Customer" });
+
+    const list = await call(roles.users.list, undefined, { context: { headers } });
+    const ids = list.map((u) => u.id);
+    expect(ids).toContain(admin.id);
+    expect(ids).toContain(otherAdmin.id);
+    expect(ids).not.toContain(customer.id); // customers are excluded, only admin-role users come back
+  });
 });

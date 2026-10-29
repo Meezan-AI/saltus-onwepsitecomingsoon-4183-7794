@@ -81,6 +81,15 @@ export const roles = {
     }),
 
   users: {
+    /** Every "admin"-role user, for the role-assignment picker. */
+    list: adminOnly.handler(() =>
+      db
+        .select({ id: schema.user.id, name: schema.user.name, email: schema.user.email })
+        .from(schema.user)
+        .where(eq(schema.user.role, "admin"))
+        .orderBy(asc(schema.user.name)),
+    ),
+
     /** Roles held by one admin user. */
     listForUser: adminOnly.input(z.object({ userId: z.string() })).handler(({ input }) =>
       db
