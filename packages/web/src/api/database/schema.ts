@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, index, unique } from "drizzle-orm/sqlite-core";
 import { user } from "./auth-schema";
 
 /**
@@ -283,3 +283,200 @@ export const paymentIntents = sqliteTable("payment_intents", {
     .$defaultFn(() => new Date())
     .$onUpdate(() => new Date()),
 });
+
+// ---------------------------------------------------------------------------
+// Admin foundation (bulk 1): product options, suppliers, order status
+// history, and the admin RBAC system. Existing marketplace tables above are
+// untouched — these are additive only. New in this bulk: product option
+// groups/values, suppliers + their product links, order status history, and
+// the roles/permissions/user-role tables. Products, categories, orders,
+// design files and RFQs already existed from Phase 0 and are reused as-is.
+// ---------------------------------------------------------------------------
+
+/** A named option group on a product, e.g. "Color" or "Size". */
+export const productOptionGroups = sqliteTable(
+  "product_option_groups",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    productId: integer("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    nameEn: text("name_en").notNull(),
+    nameAr: text("name_ar").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [index("product_option_groups_product_id_idx").on(table.productId)],
+);
+
+/** One selectable value within an option group, e.g. "Red" under "Color". */
+export const productOptionValues = sqliteTable(
+  "product_option_values",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    groupId: integer("group_id")
+      .notNull()
+      .references(() => productOptionGroups.id, { onDelete: "cascade" }),
+    valueEn: text("value_en").notNull(),
+    valueAr: text("value_ar").notNull(),
+    /** Added to the variant's priceCents when this value is picked — 0 for no surcharge. */
+    priceDeltaCents: integer("price_delta_cents").notNull().default(0),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [index("product_option_values_group_id_idx").on(table.groupId)],
+);
+
+/** A vendor Saltus sources products from — contact details only, no auth of their own. */
+export const suppliers = sqliteTable("suppliers", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  nameEn: text("name_en").notNull(),
+  nameAr: text("name_ar").notNull(),
+  contactName: text("contact_name"),
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address"),
+  notes: text("notes"),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date()),
+});
+
+/** Many-to-many: a product can be sourced from several suppliers (for price comparison). */
+export const productSuppliers = sqliteTable(
+  "product_suppliers",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    productId: integer("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    supplierId: integer("supplier_id")
+      .notNull()
+      .references(() => suppliers.id, { onDelete: "cascade" }),
+    costPriceCents: integer("cost_price_cents"),
+    leadTimeDays: integer("lead_time_days"),
+    isPreferred: integer("is_preferred", { mode: "boolean" }).notNull().default(false),
+    notes: text("notes"),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [
+    index("product_suppliers_product_id_idx").on(table.productId),
+    index("product_suppliers_supplier_id_idx").on(table.supplierId),
+    unique("product_suppliers_product_supplier_unique").on(table.productId, table.supplierId),
+  ],
+);
+
+/**
+ * Full audit trail of every `orders.status` transition — written by
+ * services/order-status-history.ts#recordOrderStatusChange, called from every
+ * place that changes an order's status (checkout, RFQ acceptance, design
+ * review, admin status updates/payment confirmation, customer cancellation).
+ * `fromStatus` is null for the entry logged at order creation.
+ */
+export const orderStatusHistory = sqliteTable(
+  "order_status_history",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    orderId: integer("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    fromStatus: text("from_status"),
+    toStatus: text("to_status").notNull(),
+    /** Null when the system changes the status itself (e.g. auto-advance on design approval). */
+    changedBy: text("changed_by").references(() => user.id),
+    note: text("note"),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [index("order_status_history_order_id_idx").on(table.orderId)],
+);
+
+// ---------------------------------------------------------------------------
+// Admin RBAC — roles and permissions for the admin dashboard (report item 9).
+// `user.role` ("customer" | "admin") from Better Auth stays as the coarse
+// gate used by the existing `adminOnly` middleware; these tables add a finer
+// layer on top (see middleware/auth.ts#requirePermission) that Phase 4's
+// admin routes can adopt feature-by-feature without breaking today's gate.
+// ---------------------------------------------------------------------------
+
+/** A single grantable capability, e.g. "manage_products". Seeded by migration, not user-created. */
+export const permissions = sqliteTable("permissions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  key: text("key").notNull().unique(),
+  descriptionEn: text("description_en").notNull(),
+  descriptionAr: text("description_ar").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+/** A named bundle of permissions assignable to admin users, e.g. "super_admin" or "staff". */
+export const roles = sqliteTable("roles", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull().unique(),
+  descriptionEn: text("description_en"),
+  descriptionAr: text("description_ar"),
+  /** Seeded roles (super_admin, staff) can't be deleted — only their permission set can change. */
+  isSystem: integer("is_system", { mode: "boolean" }).notNull().default(false),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date()),
+});
+
+/** Many-to-many: which permissions a role grants. */
+export const rolePermissions = sqliteTable(
+  "role_permissions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    roleId: integer("role_id")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    permissionId: integer("permission_id")
+      .notNull()
+      .references(() => permissions.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    index("role_permissions_role_id_idx").on(table.roleId),
+    index("role_permissions_permission_id_idx").on(table.permissionId),
+    unique("role_permissions_role_permission_unique").on(table.roleId, table.permissionId),
+  ],
+);
+
+/** Many-to-many: which roles an admin user holds — a user can hold more than one. */
+export const userRoles = sqliteTable(
+  "user_roles",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    roleId: integer("role_id")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    assignedBy: text("assigned_by").references(() => user.id),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [
+    index("user_roles_user_id_idx").on(table.userId),
+    index("user_roles_role_id_idx").on(table.roleId),
+    unique("user_roles_user_role_unique").on(table.userId, table.roleId),
+  ],
+);

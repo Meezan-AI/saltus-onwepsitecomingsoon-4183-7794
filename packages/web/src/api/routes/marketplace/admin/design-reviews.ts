@@ -4,9 +4,10 @@ import { ORPCError } from "@orpc/server";
 import { adminOnly } from "../../../middleware/auth";
 import { db } from "../../../database";
 import * as schema from "../../../database/schema";
+import { recordOrderStatusChange } from "../../../services/order-status-history";
 
 /** Once every item on an order has a resolved design, the order can move past design review. */
-async function maybeAdvanceOrder(orderId: number) {
+async function maybeAdvanceOrder(orderId: number, changedBy: string) {
   const items = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, orderId));
   const allResolved = items.every((item) => ["approved", "not_required"].includes(item.designStatus));
   if (!allResolved) return;
@@ -15,6 +16,13 @@ async function maybeAdvanceOrder(orderId: number) {
   // marked `not_required` straight away, which never passes through "design_in_review".
   if (order && ["design_pending", "design_in_review"].includes(order.status)) {
     await db.update(schema.orders).set({ status: "design_approved" }).where(eq(schema.orders.id, orderId));
+    await recordOrderStatusChange({
+      orderId,
+      fromStatus: order.status,
+      toStatus: "design_approved",
+      changedBy,
+      note: "All order items resolved",
+    });
   }
 }
 
@@ -51,14 +59,14 @@ export const designReviews = {
   ),
 
   /** Mark an item as not needing a design at all — the manual override from report section 8. */
-  markNotRequired: adminOnly.input(z.object({ orderItemId: z.number() })).handler(async ({ input }) => {
+  markNotRequired: adminOnly.input(z.object({ orderItemId: z.number() })).handler(async ({ context, input }) => {
     const [item] = await db
       .update(schema.orderItems)
       .set({ designStatus: "not_required" })
       .where(eq(schema.orderItems.id, input.orderItemId))
       .returning();
     if (!item) throw new ORPCError("NOT_FOUND");
-    await maybeAdvanceOrder(item.orderId);
+    await maybeAdvanceOrder(item.orderId, context.user.id);
     return item;
   }),
 
@@ -103,7 +111,7 @@ export const designReviews = {
         .returning();
       if (!item) throw new ORPCError("NOT_FOUND");
 
-      if (input.decision === "approved") await maybeAdvanceOrder(item.orderId);
+      if (input.decision === "approved") await maybeAdvanceOrder(item.orderId, context.user.id);
       return item;
     }),
 };

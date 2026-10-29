@@ -4,6 +4,7 @@ import { ORPCError } from "@orpc/server";
 import { authed } from "../../middleware/auth";
 import { db } from "../../database";
 import * as schema from "../../database/schema";
+import { recordOrderStatusChange } from "../../services/order-status-history";
 
 function generateOrderNumber() {
   const date = new Date();
@@ -119,6 +120,14 @@ export const rfq = {
       .update(schema.rfqRequests)
       .set({ status: "accepted", convertedOrderId: order.id })
       .where(eq(schema.rfqRequests.id, request.id));
+
+    await recordOrderStatusChange({
+      orderId: order.id,
+      fromStatus: null,
+      toStatus: order.status,
+      changedBy: context.user.id,
+      note: `Order created from accepted RFQ #${request.id}`,
+    });
 
     return order;
   }),

@@ -4,6 +4,7 @@ import { ORPCError } from "@orpc/server";
 import { authed } from "../../middleware/auth";
 import { db } from "../../database";
 import * as schema from "../../database/schema";
+import { recordOrderStatusChange } from "../../services/order-status-history";
 
 function generateOrderNumber() {
   const date = new Date();
@@ -123,6 +124,17 @@ export const orders = {
       }
 
       await db.delete(schema.cartItems).where(eq(schema.cartItems.cartId, myCart.id));
+
+      for (const order of createdOrders) {
+        await recordOrderStatusChange({
+          orderId: order.id,
+          fromStatus: null,
+          toStatus: order.status,
+          changedBy: context.user.id,
+          note: "Order created at checkout",
+        });
+      }
+
       return createdOrders;
     }),
 
@@ -138,6 +150,13 @@ export const orders = {
       .set({ status: "cancelled" })
       .where(eq(schema.orders.id, order.id))
       .returning();
+    await recordOrderStatusChange({
+      orderId: order.id,
+      fromStatus: order.status,
+      toStatus: "cancelled",
+      changedBy: context.user.id,
+      note: "Cancelled by customer",
+    });
     return updated;
   }),
 };

@@ -4,6 +4,7 @@ import { ORPCError } from "@orpc/server";
 import { adminOnly } from "../../../middleware/auth";
 import { db } from "../../../database";
 import * as schema from "../../../database/schema";
+import { recordOrderStatusChange } from "../../../services/order-status-history";
 
 const ORDER_STATUSES = [
   "design_pending",
@@ -60,21 +61,51 @@ export const orders = {
   }),
 
   updateStatus: adminOnly
-    .input(z.object({ id: z.number(), status: z.enum(ORDER_STATUSES) }))
-    .handler(async ({ input }) => {
+    .input(z.object({ id: z.number(), status: z.enum(ORDER_STATUSES), note: z.string().max(2000).optional() }))
+    .handler(async ({ context, input }) => {
+      const [before] = await db.select().from(schema.orders).where(eq(schema.orders.id, input.id));
+      if (!before) throw new ORPCError("NOT_FOUND");
       const [order] = await db
         .update(schema.orders)
         .set({ status: input.status })
         .where(eq(schema.orders.id, input.id))
         .returning();
       if (!order) throw new ORPCError("NOT_FOUND");
+      if (before.status !== order.status) {
+        await recordOrderStatusChange({
+          orderId: order.id,
+          fromStatus: before.status,
+          toStatus: order.status,
+          changedBy: context.user.id,
+          note: input.note,
+        });
+      }
       return order;
     }),
+
+  /** Full status-change audit trail for one order — report item 8. */
+  history: adminOnly.input(z.object({ orderId: z.number() })).handler(({ input }) =>
+    db
+      .select({
+        id: schema.orderStatusHistory.id,
+        orderId: schema.orderStatusHistory.orderId,
+        fromStatus: schema.orderStatusHistory.fromStatus,
+        toStatus: schema.orderStatusHistory.toStatus,
+        note: schema.orderStatusHistory.note,
+        createdAt: schema.orderStatusHistory.createdAt,
+        changedBy: schema.orderStatusHistory.changedBy,
+        changedByName: schema.user.name,
+      })
+      .from(schema.orderStatusHistory)
+      .leftJoin(schema.user, eq(schema.orderStatusHistory.changedBy, schema.user.id))
+      .where(eq(schema.orderStatusHistory.orderId, input.orderId))
+      .orderBy(desc(schema.orderStatusHistory.id)),
+  ),
 
   /** Manual payment confirmation (bank transfer / cash / pay on pickup) — see report section 9. */
   confirmPayment: adminOnly
     .input(z.object({ id: z.number(), reference: z.string().max(200).optional() }))
-    .handler(async ({ input }) => {
+    .handler(async ({ context, input }) => {
       const [order] = await db.select().from(schema.orders).where(eq(schema.orders.id, input.id));
       if (!order) throw new ORPCError("NOT_FOUND");
 
@@ -89,14 +120,24 @@ export const orders = {
       // "design_approved" and "payment_pending" are both "awaiting payment" states — a manual
       // payment can land while the order is in either, so confirm from both.
       const awaitingPayment = ["design_approved", "payment_pending"].includes(order.status);
+      const nextStatus = awaitingPayment ? "payment_confirmed" : order.status;
       const [updated] = await db
         .update(schema.orders)
         .set({
           paymentStatus: "paid",
-          status: awaitingPayment ? "payment_confirmed" : order.status,
+          status: nextStatus,
         })
         .where(eq(schema.orders.id, order.id))
         .returning();
+      if (nextStatus !== order.status) {
+        await recordOrderStatusChange({
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: nextStatus,
+          changedBy: context.user.id,
+          note: "Manual payment confirmed",
+        });
+      }
       return updated;
     }),
 };

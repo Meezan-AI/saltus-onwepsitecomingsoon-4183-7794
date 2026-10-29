@@ -4,6 +4,7 @@ import { ORPCError } from "@orpc/server";
 import { authed } from "../../middleware/auth";
 import { db } from "../../database";
 import * as schema from "../../database/schema";
+import { recordOrderStatusChange } from "../../services/order-status-history";
 
 async function assertOwnsOrderItem(orderItemId: number, userId: string) {
   const [item] = await db.select().from(schema.orderItems).where(eq(schema.orderItems.id, orderItemId));
@@ -85,6 +86,13 @@ export const designs = {
       const [order] = await db.select().from(schema.orders).where(eq(schema.orders.id, item.orderId));
       if (order?.status === "design_pending") {
         await db.update(schema.orders).set({ status: "design_in_review" }).where(eq(schema.orders.id, order.id));
+        await recordOrderStatusChange({
+          orderId: order.id,
+          fromStatus: "design_pending",
+          toStatus: "design_in_review",
+          changedBy: context.user.id,
+          note: "First design file submitted",
+        });
       }
 
       return inserted;
