@@ -36,6 +36,7 @@ const AdminRfqDetailPage = lazy(() => import("./pages/admin-rfq-detail"));
 const AdminDesignReviewsPage = lazy(() => import("./pages/admin-design-reviews"));
 const AdminProductsPage = lazy(() => import("./pages/admin-products"));
 const AdminProductDetailPage = lazy(() => import("./pages/admin-product-detail"));
+const AdminBannersPage = lazy(() => import("./pages/admin-banners"));
 const AdminCategoriesPage = lazy(() => import("./pages/admin-categories"));
 const AdminSuppliersPage = lazy(() => import("./pages/admin-suppliers"));
 const AdminCustomersPage = lazy(() => import("./pages/admin-customers"));
@@ -105,6 +106,7 @@ function App() {
             <Route path="/admin/design-reviews" component={AdminDesignReviewsPage} />
             <Route path="/admin/products" component={AdminProductsPage} />
             <Route path="/admin/products/:id" component={AdminProductDetailPage} />
+            <Route path="/admin/banners" component={AdminBannersPage} />
             <Route path="/admin/categories" component={AdminCategoriesPage} />
             <Route path="/admin/suppliers" component={AdminSuppliersPage} />
             <Route path="/admin/customers" component={AdminCustomersPage} />

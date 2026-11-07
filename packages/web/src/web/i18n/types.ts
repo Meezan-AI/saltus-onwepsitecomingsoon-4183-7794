@@ -303,6 +303,13 @@ export type Content = {
       directPurchase: string;
       requestQuote: string;
       viewDetails: string;
+      off: string;
+    };
+    hero: {
+      defaultCta: string;
+      prev: string;
+      next: string;
+      goTo: string;
     };
     product: {
       backToMarketplace: string;

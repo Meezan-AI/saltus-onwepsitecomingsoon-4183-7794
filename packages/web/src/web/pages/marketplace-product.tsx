@@ -60,8 +60,10 @@ export default function MarketplaceProductPage() {
   const description = lang === "ar" ? product.descriptionAr : product.descriptionEn;
   const images = product.images;
   const minVariantPrice = product.variants.length
-    ? Math.min(...product.variants.map((v) => v.priceCents))
+    ? Math.min(...product.variants.map((v) => v.salePriceCents))
     : null;
+  const minListPrice = product.variants.length ? Math.min(...product.variants.map((v) => v.priceCents)) : null;
+  const discountPercent = product.discountPercent ?? 0;
   const currency = product.variants[0]?.currency ?? "JOD";
   const activeVariantId = selectedVariantId ?? product.variants[0]?.id ?? null;
   const activeVariant = product.variants.find((v) => v.id === activeVariantId) ?? null;
@@ -101,7 +103,7 @@ export default function MarketplaceProductPage() {
           offers: product.variants.map((v) => ({
             "@type": "Offer",
             name: v.name,
-            price: (v.priceCents / 1000).toFixed(3),
+            price: (v.salePriceCents / 1000).toFixed(3),
             priceCurrency: v.currency,
             availability: "https://schema.org/InStock",
           })),
@@ -172,6 +174,16 @@ export default function MarketplaceProductPage() {
                 <p className="mt-5 text-2xl font-bold text-[#FF8A3D]">
                   <span className="text-sm font-medium text-[#B9C2D0]">{t.marketplace.product.priceFrom} </span>
                   {formatPriceCents(minVariantPrice, currency)}
+                  {discountPercent > 0 && minListPrice !== null && (
+                    <>
+                      <span className="ms-3 text-base font-medium text-[#B9C2D0]/60 line-through">
+                        {formatPriceCents(minListPrice, currency)}
+                      </span>
+                      <span className="ms-3 rounded-full bg-[#FF6B00] px-2.5 py-1 align-middle text-xs font-extrabold text-white">
+                        {t.marketplace.card.off.replace("{pct}", String(discountPercent))}
+                      </span>
+                    </>
+                  )}
                 </p>
               )}
 
@@ -203,7 +215,14 @@ export default function MarketplaceProductPage() {
                           {v.name}
                           {v.rentalUnit && <span className="ms-2 text-xs text-[#B9C2D0]/60">/ {v.rentalUnit}</span>}
                         </span>
-                        <span className="font-semibold text-[#FF8A3D]">{formatPriceCents(v.priceCents, v.currency)}</span>
+                        <span className="font-semibold text-[#FF8A3D]">
+                          {formatPriceCents(v.salePriceCents, v.currency)}
+                          {discountPercent > 0 && (
+                            <span className="ms-2 text-xs font-normal text-[#B9C2D0]/60 line-through">
+                              {formatPriceCents(v.priceCents, v.currency)}
+                            </span>
+                          )}
+                        </span>
                       </button>
                     ))}
                   </div>

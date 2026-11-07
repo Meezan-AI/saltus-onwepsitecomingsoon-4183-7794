@@ -5,6 +5,8 @@ import { base } from "../../__core/app";
 import { db } from "../../database";
 import * as schema from "../../database/schema";
 import { publicUrl } from "../../lib/s3";
+import { activeDiscountPercent, applyDiscount } from "../../lib/pricing";
+import { bannerHref } from "./admin/banners";
 
 /**
  * Explicit public-safe column list for a storefront product (supplier
@@ -31,6 +33,8 @@ const PUBLIC_PRODUCT_COLUMNS = {
   allowDirectPurchase: schema.products.allowDirectPurchase,
   allowRfq: schema.products.allowRfq,
   isActive: schema.products.isActive,
+  discountPercent: schema.products.discountPercent,
+  discountEndsAt: schema.products.discountEndsAt,
 };
 
 /**
@@ -115,10 +119,15 @@ export const catalog = {
           const minPriceCents = productVariants.length
             ? Math.min(...productVariants.map((v) => v.priceCents))
             : null;
+          const discountPercent = activeDiscountPercent(product);
           return {
             ...product,
+            discountPercent,
             coverImageUrl: cover ? publicUrl(cover.s3Key) : null,
+            /** Lowest list price (before discount). */
             minPriceCents,
+            /** Lowest price the customer actually pays. */
+            minSalePriceCents: minPriceCents === null ? null : applyDiscount(minPriceCents, discountPercent),
             currency: productVariants[0]?.currency ?? "JOD",
           };
         });
@@ -142,11 +151,47 @@ export const catalog = {
           .where(and(eq(schema.productVariants.productId, product.id), eq(schema.productVariants.isActive, true))),
       ]);
 
+      const discountPercent = activeDiscountPercent(product);
       return {
         ...product,
+        discountPercent,
         images: images.map((img) => ({ ...img, url: publicUrl(img.s3Key) })),
-        variants,
+        variants: variants.map((v) => ({ ...v, salePriceCents: applyDiscount(v.priceCents, discountPercent) })),
       };
+    }),
+  },
+
+  /** Hero slides for the marketplace landing page, in the order the admin set. */
+  banners: {
+    list: base.handler(async () => {
+      const [rows, products, categories] = await Promise.all([
+        db.select().from(schema.marketplaceBanners).where(eq(schema.marketplaceBanners.isActive, true)).orderBy(asc(schema.marketplaceBanners.sortOrder), asc(schema.marketplaceBanners.id)),
+        db.select().from(schema.products),
+        db.select().from(schema.categories),
+      ]);
+      return rows.flatMap((b) => {
+        const product = b.productId ? products.find((p) => p.id === b.productId) : undefined;
+        // A slide pointing at an archived product would lead to a 404 page — hide it.
+        if (b.productId && (!product || !product.isActive)) return [];
+        const category = b.categoryId ? categories.find((c) => c.id === b.categoryId) : undefined;
+        return [
+          {
+            id: b.id,
+            titleEn: b.titleEn,
+            titleAr: b.titleAr,
+            subtitleEn: b.subtitleEn,
+            subtitleAr: b.subtitleAr,
+            badgeEn: b.badgeEn,
+            badgeAr: b.badgeAr,
+            ctaEn: b.ctaEn,
+            ctaAr: b.ctaAr,
+            imageUrl: publicUrl(b.imageKey),
+            href: bannerHref(b, product, category),
+            /** Active discount on the linked product, so the slide can show "-20%" without a custom badge. */
+            discountPercent: product ? activeDiscountPercent(product) : 0,
+          },
+        ];
+      });
     }),
   },
 };

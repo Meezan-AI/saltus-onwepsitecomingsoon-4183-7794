@@ -97,3 +97,12 @@ export function useRemoveProductVariant() {
     }),
   );
 }
+
+export function useRemoveProduct() {
+  const qc = useQueryClient();
+  return useMutation(
+    orpc.admin.products.remove.mutationOptions({
+      onSuccess: () => qc.invalidateQueries({ queryKey: orpc.admin.products.key() }),
+    }),
+  );
+}

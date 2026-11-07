@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
+import { useSearch } from "wouter";
 import { Search, X, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Seo } from "../components/seo";
 import { Nav } from "../components/nav";
 import { Footer } from "../components/footer";
 import { ProductCard } from "../components/marketplace/product-card";
-import { useCategories, useProducts } from "../queries/catalog";
+import { HeroSlider } from "../components/marketplace/hero-slider";
+import { useBanners, useCategories, useProducts } from "../queries/catalog";
 import { useLang } from "../i18n";
 
 const inputClass =
@@ -16,10 +18,15 @@ export default function MarketplacePage() {
   const { t, dir } = useLang();
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<string | undefined>(undefined);
+  const urlSearch = useSearch();
+  const [category, setCategory] = useState<string | undefined>(
+    () => new URLSearchParams(urlSearch).get("category") || undefined,
+  );
   const [page, setPage] = useState(1);
 
   const categoriesQuery = useCategories();
+  const bannersQuery = useBanners();
+  const slides = bannersQuery.data ?? [];
   const productsQuery = useProducts({ categorySlug: category, q: query || undefined, page, pageSize: PAGE_SIZE });
 
   const data = productsQuery.data;
@@ -63,19 +70,36 @@ export default function MarketplacePage() {
       />
       <Nav />
 
-      <section className="relative overflow-hidden bg-[#060f1f] pt-40 pb-16">
-        <div className="absolute inset-0">
-          <img src="/images/hero-bg.png" alt="" className="h-full w-full object-cover opacity-25" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#060f1f]/70 to-[#0b1f3a]" />
-        </div>
-        <div className="relative mx-auto max-w-4xl px-6 text-center">
-          <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[#FF6B00]">
-            {t.marketplace.eyebrow}
-          </span>
-          <h1 className="font-display mt-4 text-4xl font-extrabold text-white sm:text-6xl">{t.marketplace.title}</h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#B9C2D0]">{t.marketplace.desc}</p>
-        </div>
-      </section>
+      {slides.length > 0 ? (
+        <section className="bg-[#060f1f] pt-28 pb-10 sm:pt-32">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6">
+            <HeroSlider slides={slides} />
+            <div className="mx-auto mt-10 max-w-3xl text-center">
+              <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[#FF6B00]">
+                {t.marketplace.eyebrow}
+              </span>
+              <h1 className="font-display mt-3 text-3xl font-extrabold text-white sm:text-4xl">
+                {t.marketplace.title}
+              </h1>
+              <p className="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-[#B9C2D0]">{t.marketplace.desc}</p>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="relative overflow-hidden bg-[#060f1f] pt-40 pb-16">
+          <div className="absolute inset-0">
+            <img src="/images/hero-bg.png" alt="" className="h-full w-full object-cover opacity-25" />
+            <div className="absolute inset-0 bg-gradient-to-b from-[#060f1f]/70 to-[#0b1f3a]" />
+          </div>
+          <div className="relative mx-auto max-w-4xl px-6 text-center">
+            <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[#FF6B00]">
+              {t.marketplace.eyebrow}
+            </span>
+            <h1 className="font-display mt-4 text-4xl font-extrabold text-white sm:text-6xl">{t.marketplace.title}</h1>
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#B9C2D0]">{t.marketplace.desc}</p>
+          </div>
+        </section>
+      )}
 
       <section className="bg-[#0b1f3a] py-16">
         <div className="mx-auto max-w-7xl px-6">

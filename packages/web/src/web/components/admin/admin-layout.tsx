@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard,
   Package,
+  GalleryHorizontal,
   Tags,
   Truck,
   ClipboardList,
@@ -28,6 +29,7 @@ const NAV: { label: string; href: string; icon: typeof LayoutDashboard; permissi
   { label: "Design Reviews", href: "/admin/design-reviews", icon: FileCheck2, permission: "manage_design_reviews" },
   { label: "RFQs", href: "/admin/rfqs", icon: FileSignature, permission: "manage_rfqs" },
   { label: "Products", href: "/admin/products", icon: Package },
+  { label: "Hero Slides", href: "/admin/banners", icon: GalleryHorizontal, permission: "manage_products" },
   { label: "Categories", href: "/admin/categories", icon: Tags, permission: "manage_categories" },
   { label: "Suppliers", href: "/admin/suppliers", icon: Truck, permission: "manage_suppliers" },
   { label: "Customers", href: "/admin/customers", icon: Users, permission: "manage_customers" },

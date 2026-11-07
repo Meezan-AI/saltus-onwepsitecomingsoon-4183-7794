@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { Loader2, Plus, Trash2, Upload } from "lucide-react";
 import { AdminLayout } from "../components/admin/admin-layout";
 import { AdminProtectedRoute } from "../components/admin/admin-protected-route";
@@ -13,7 +13,10 @@ import { Textarea } from "../components/ui/textarea";
 import {
   useAdminProduct,
   useAddProductVariant,
+  useRemoveProduct,
   useRemoveProductImage,
+  useSetProductActive,
+  useUpdateProductVariant,
   useRemoveProductVariant,
   useUpdateProduct,
   useUploadProductImage,
@@ -32,7 +35,7 @@ import {
   useSupplierLinksForProduct,
   useUnlinkSupplierProduct,
 } from "../queries/admin-suppliers";
-import { formatCents } from "../lib/admin-format";
+import { formatCents, titleCase } from "../lib/admin-format";
 import { useMyPermissions } from "../queries/account";
 
 function ProductBasicInfo({ product, categories }: { product: NonNullable<ReturnType<typeof useAdminProduct>["data"]>; categories: ReturnType<typeof useAdminCategories>["data"] }) {
@@ -45,6 +48,16 @@ function ProductBasicInfo({ product, categories }: { product: NonNullable<Return
   const [fulfillmentType, setFulfillmentType] = useState(product.fulfillmentType);
   const [allowDirectPurchase, setAllowDirectPurchase] = useState(product.allowDirectPurchase);
   const [allowRfq, setAllowRfq] = useState(product.allowRfq);
+  const [type, setType] = useState<string>(product.type);
+  const [sku, setSku] = useState(product.sku);
+  const [slug, setSlug] = useState(product.slug);
+  const [discount, setDiscount] = useState(String(product.discountPercent ?? 0));
+  const [discountEnds, setDiscountEnds] = useState(
+    product.discountEndsAt ? new Date(product.discountEndsAt).toISOString().slice(0, 10) : "",
+  );
+  const [isActive, setIsActive] = useState(product.isActive);
+  const [saved, setSaved] = useState(false);
+  const discountNum = Math.min(100, Math.max(0, Math.round(Number(discount) || 0)));
 
   return (
     <Card>
@@ -103,22 +116,70 @@ function ProductBasicInfo({ product, categories }: { product: NonNullable<Return
             </label>
           </div>
         </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <Label>Type</Label>
+            <Select value={type} onChange={(e) => setType(e.target.value)}>
+              {["equipment", "printing", "gift", "service", "other"].map((t) => (
+                <option key={t} value={t}>
+                  {titleCase(t)}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label>SKU</Label>
+            <Input value={sku} onChange={(e) => setSku(e.target.value)} />
+          </div>
+          <div>
+            <Label>Slug (URL)</Label>
+            <Input value={slug} onChange={(e) => setSlug(e.target.value)} />
+          </div>
+        </div>
+        <div className="grid gap-4 rounded-xl border border-[#FF6B00]/25 bg-[#FF6B00]/[0.05] p-4 sm:grid-cols-3">
+          <div>
+            <Label>Discount % (shown to customers and applied at checkout)</Label>
+            <Input type="number" min={0} max={100} value={discount} onChange={(e) => setDiscount(e.target.value)} />
+          </div>
+          <div>
+            <Label>Discount ends (optional)</Label>
+            <Input type="date" value={discountEnds} onChange={(e) => setDiscountEnds(e.target.value)} />
+          </div>
+          <div className="flex items-end pb-1">
+            <label className="flex items-center gap-2 text-sm text-white/80">
+              <Checkbox checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+              Active (visible in store)
+            </label>
+          </div>
+        </div>
+        {update.error && <p className="text-sm text-red-300">{update.error instanceof Error ? update.error.message : "Save failed"}</p>}
+        {saved && !update.isPending && !update.error && <p className="text-sm text-emerald-300">Saved.</p>}
         <button
           type="button"
           disabled={update.isPending}
-          onClick={() =>
-            update.mutate({
-              id: product.id,
-              nameEn,
-              nameAr,
-              descriptionEn: descriptionEn || undefined,
-              descriptionAr: descriptionAr || undefined,
-              categoryId: categoryId ? Number(categoryId) : undefined,
-              fulfillmentType: fulfillmentType as never,
-              allowDirectPurchase,
-              allowRfq,
-            })
-          }
+          onClick={() => {
+            setSaved(false);
+            update.mutate(
+              {
+                id: product.id,
+                nameEn,
+                nameAr,
+                descriptionEn: descriptionEn || undefined,
+                descriptionAr: descriptionAr || undefined,
+                categoryId: categoryId ? Number(categoryId) : null,
+                fulfillmentType: fulfillmentType as never,
+                allowDirectPurchase,
+                allowRfq,
+                type: type as never,
+                sku: sku.trim() || undefined,
+                slug: slug.trim() || undefined,
+                discountPercent: discountNum,
+                discountEndsAt: discountEnds ? new Date(`${discountEnds}T23:59:59`).toISOString() : null,
+                isActive,
+              },
+              { onSuccess: () => setSaved(true) },
+            );
+          }}
           className="flex items-center gap-2 rounded-full bg-[#FF6B00] px-4 py-2 text-sm font-semibold text-white hover:bg-[#FF8A3D] disabled:opacity-50"
         >
           {update.isPending && <Loader2 size={14} className="animate-spin" />}
@@ -179,6 +240,45 @@ function ImagesSection({ productId, images }: { productId: number; images: { id:
   );
 }
 
+function VariantRow({
+  variant,
+  onRemove,
+}: {
+  variant: { id: number; name: string; priceCents: number; stockQty: number | null };
+  onRemove: () => void;
+}) {
+  const update = useUpdateProductVariant();
+  const [name, setName] = useState(variant.name);
+  const [price, setPrice] = useState((variant.priceCents / 1000).toFixed(3));
+  const [stock, setStock] = useState(variant.stockQty == null ? "" : String(variant.stockQty));
+  const priceCents = Math.round(Number(price) * 1000);
+  const dirty =
+    name !== variant.name || priceCents !== variant.priceCents || (stock === "" ? null : Number(stock)) !== variant.stockQty;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm">
+      <Input value={name} onChange={(e) => setName(e.target.value)} className="w-44" aria-label="Variant name" />
+      <Input type="number" step="0.001" value={price} onChange={(e) => setPrice(e.target.value)} className="w-28" aria-label="Price (JOD)" />
+      <Input type="number" placeholder="∞" value={stock} onChange={(e) => setStock(e.target.value)} className="w-24" aria-label="Stock" />
+      {dirty && (
+        <button
+          type="button"
+          disabled={update.isPending || !name || !Number.isFinite(priceCents) || priceCents < 0}
+          onClick={() =>
+            update.mutate({ id: variant.id, name, priceCents, stockQty: stock === "" ? null : Number(stock) })
+          }
+          className="rounded-full bg-[#FF6B00] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#FF8A3D] disabled:opacity-50"
+        >
+          {update.isPending ? "Saving…" : "Save"}
+        </button>
+      )}
+      <button type="button" onClick={onRemove} className="ms-auto text-white/40 hover:text-red-300" aria-label="Remove variant">
+        <Trash2 size={15} />
+      </button>
+    </div>
+  );
+}
+
 function VariantsSection({ productId, variants }: { productId: number; variants: { id: number; name: string; priceCents: number; stockQty: number | null; isActive: boolean }[] }) {
   const add = useAddProductVariant();
   const remove = useRemoveProductVariant();
@@ -193,14 +293,7 @@ function VariantsSection({ productId, variants }: { productId: number; variants:
       </CardHeader>
       <CardContent className="space-y-3">
         {variants.filter((v) => v.isActive).map((v) => (
-          <div key={v.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm">
-            <span className="font-medium text-white">{v.name}</span>
-            <span className="text-white/60">{formatCents(v.priceCents)}</span>
-            <span className="text-white/40">{v.stockQty == null ? "Unlimited" : `${v.stockQty} in stock`}</span>
-            <button type="button" onClick={() => remove.mutate({ id: v.id })} className="text-white/40 hover:text-red-300">
-              <Trash2 size={15} />
-            </button>
-          </div>
+          <VariantRow key={v.id} variant={v} onRemove={() => remove.mutate({ id: v.id })} />
         ))}
 
         <div className="flex flex-wrap items-end gap-2 pt-2">
@@ -351,6 +444,52 @@ function SuppliersSection({ productId }: { productId: number }) {
   );
 }
 
+function DangerZone({ product }: { product: { id: number; nameEn: string; isActive: boolean } }) {
+  const [, navigate] = useLocation();
+  const setActive = useSetProductActive();
+  const remove = useRemoveProduct();
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Archive or delete</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-white/50">
+          Archiving hides the product from the store but keeps order history. Deleting removes it for good and is only possible if it was never ordered or quoted.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            disabled={setActive.isPending}
+            onClick={() => setActive.mutate({ id: product.id, isActive: !product.isActive })}
+            className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white/80 hover:bg-white/5 disabled:opacity-50"
+          >
+            {product.isActive ? "Archive product" : "Restore product"}
+          </button>
+          <button
+            type="button"
+            disabled={remove.isPending}
+            onClick={() => {
+              if (window.confirm(`Delete "${product.nameEn}" permanently? This cannot be undone.`)) {
+                remove.mutate({ id: product.id }, { onSuccess: () => navigate("/admin/products") });
+              }
+            }}
+            className="flex items-center gap-2 rounded-full border border-red-400/40 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+          >
+            <Trash2 size={14} /> Delete product
+          </button>
+        </div>
+        {remove.error && (
+          <p className="text-sm text-red-300">
+            {remove.error instanceof Error ? remove.error.message : "Delete failed"} Use Archive instead.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ProductDetailContent({ id }: { id: number }) {
   const product = useAdminProduct(id);
   const categories = useAdminCategories();
@@ -377,6 +516,7 @@ function ProductDetailContent({ id }: { id: number }) {
         <VariantsSection productId={id} variants={product.data.variants} />
         <OptionsSection productId={id} />
         {canSeeSuppliers && <SuppliersSection productId={id} />}
+        {(permissions ?? []).includes("manage_products") && <DangerZone product={product.data} />}
       </div>
     </AdminLayout>
   );

@@ -9,6 +9,8 @@ type ProductCardData = {
   nameAr: string;
   coverImageUrl: string | null;
   minPriceCents: number | null;
+  minSalePriceCents?: number | null;
+  discountPercent?: number;
   currency: string;
   allowDirectPurchase: boolean;
   allowRfq: boolean;
@@ -36,6 +38,11 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             <ImageOff size={36} />
           </div>
         )}
+        {(product.discountPercent ?? 0) > 0 && (
+          <span className="absolute bottom-3 right-3 rounded-full bg-[#FF6B00] px-2.5 py-1 text-[11px] font-extrabold text-white shadow-lg">
+            {t.marketplace.card.off.replace("{pct}", String(product.discountPercent))}
+          </span>
+        )}
         <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
           {product.allowDirectPurchase && (
             <span className="rounded-full bg-[#0b1f3a]/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur">
@@ -55,8 +62,13 @@ export function ProductCard({ product }: { product: ProductCardData }) {
           <p className="text-sm text-[#B9C2D0]">
             <span className="text-xs">{t.marketplace.card.startingFrom}</span>{" "}
             <span className="font-semibold text-[#FF8A3D]">
-              {formatPriceCents(product.minPriceCents, product.currency)}
+              {formatPriceCents(product.minSalePriceCents ?? product.minPriceCents, product.currency)}
             </span>
+            {(product.discountPercent ?? 0) > 0 && (
+              <span className="ms-2 text-xs text-[#B9C2D0]/60 line-through">
+                {formatPriceCents(product.minPriceCents, product.currency)}
+              </span>
+            )}
           </p>
         ) : (
           <p className="text-sm text-[#B9C2D0]/70">{t.marketplace.card.requestQuote}</p>

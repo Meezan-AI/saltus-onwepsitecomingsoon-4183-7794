@@ -4,6 +4,7 @@ import { ORPCError } from "@orpc/server";
 import { authed } from "../../middleware/auth";
 import { db } from "../../database";
 import * as schema from "../../database/schema";
+import { activeDiscountPercent, applyDiscount } from "../../lib/pricing";
 
 export const designFileInput = z.object({
   s3Key: z.string().max(500),
@@ -49,7 +50,16 @@ async function cartWithItems(cartId: number) {
 
   return {
     id: cartId,
-    items: items.map(({ designFilesJson, ...item }) => ({ ...item, designFiles: parseDesignFiles(designFilesJson) })),
+    items: items.map(({ designFilesJson, ...item }) => {
+      const discountPercent = activeDiscountPercent(item.product);
+      return {
+        ...item,
+        // `variant.priceCents` stays the list price; the customer pays `unitPriceCents`.
+        product: { ...item.product, discountPercent },
+        unitPriceCents: item.variant ? applyDiscount(item.variant.priceCents, discountPercent) : 0,
+        designFiles: parseDesignFiles(designFilesJson),
+      };
+    }),
   };
 }
 

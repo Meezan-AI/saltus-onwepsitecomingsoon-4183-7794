@@ -16,7 +16,7 @@ function CartContent() {
   const removeItem = useRemoveCartItem();
 
   const items = cartQuery.data?.items ?? [];
-  const subtotalCents = items.reduce((sum, item) => sum + (item.variant?.priceCents ?? 0) * item.qty, 0);
+  const subtotalCents = items.reduce((sum, item) => sum + item.unitPriceCents * item.qty, 0);
   const currency = items[0]?.variant?.currency ?? "JOD";
   const fulfillmentTypes = new Set(items.map((item) => item.product.fulfillmentType));
 
@@ -57,7 +57,8 @@ function CartContent() {
               <div className="space-y-3">
                 {items.map((item) => {
                   const name = lang === "ar" ? item.product.nameAr : item.product.nameEn;
-                  const lineTotal = (item.variant?.priceCents ?? 0) * item.qty;
+                  const lineTotal = item.unitPriceCents * item.qty;
+                  const discounted = item.variant ? item.unitPriceCents < item.variant.priceCents : false;
                   return (
                     <div key={item.id} className="glass-card flex flex-col gap-4 rounded-2xl p-5 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0 flex-1">
@@ -69,7 +70,17 @@ function CartContent() {
                           </p>
                         )}
                         <p className="mt-1 text-sm font-semibold text-[#FF8A3D]">
-                          {item.variant ? formatPriceCents(item.variant.priceCents, item.variant.currency) : ""}
+                          {item.variant ? formatPriceCents(item.unitPriceCents, item.variant.currency) : ""}
+                          {item.variant && discounted && (
+                            <>
+                              <span className="ms-2 text-xs font-normal text-[#B9C2D0]/60 line-through">
+                                {formatPriceCents(item.variant.priceCents, item.variant.currency)}
+                              </span>
+                              <span className="ms-2 rounded-full bg-[#FF6B00] px-2 py-0.5 text-[10px] font-extrabold text-white">
+                                {t.marketplace.card.off.replace("{pct}", String(item.product.discountPercent))}
+                              </span>
+                            </>
+                          )}
                         </p>
                       </div>
 

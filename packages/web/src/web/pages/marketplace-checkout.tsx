@@ -33,7 +33,7 @@ function CheckoutContent() {
   const items = cartQuery.data?.items ?? [];
   const needsDelivery = items.some((item) => item.product.fulfillmentType !== "pickup_rental");
   const addresses = addressesQuery.data ?? [];
-  const subtotalCents = items.reduce((sum, item) => sum + (item.variant?.priceCents ?? 0) * item.qty, 0);
+  const subtotalCents = items.reduce((sum, item) => sum + item.unitPriceCents * item.qty, 0);
   const currency = items[0]?.variant?.currency ?? "JOD";
 
   const effectiveAddressId =
@@ -221,7 +221,12 @@ function CheckoutContent() {
                       {(lang === "ar" ? item.product.nameAr : item.product.nameEn)} × {item.qty}
                     </span>
                     <span className="flex-shrink-0 font-semibold text-white">
-                      {formatPriceCents((item.variant?.priceCents ?? 0) * item.qty, currency)}
+                      {formatPriceCents(item.unitPriceCents * item.qty, currency)}
+                      {item.variant && item.unitPriceCents < item.variant.priceCents && (
+                        <span className="ms-2 text-xs font-normal text-[#FF8A3D]">
+                          {t.marketplace.card.off.replace("{pct}", String(item.product.discountPercent))}
+                        </span>
+                      )}
                     </span>
                   </div>
                 ))}

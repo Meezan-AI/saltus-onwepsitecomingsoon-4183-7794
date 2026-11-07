@@ -855,6 +855,13 @@ export const en: Content = {
       directPurchase: "Direct Purchase",
       requestQuote: "Request a Quote",
       viewDetails: "View Details",
+      off: "{pct}% OFF",
+    },
+    hero: {
+      defaultCta: "Shop now",
+      prev: "Previous slide",
+      next: "Next slide",
+      goTo: "Go to slide {n}",
     },
     product: {
       backToMarketplace: "Back to Marketplace",

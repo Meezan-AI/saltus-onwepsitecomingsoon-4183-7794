@@ -5,6 +5,7 @@ import { authed } from "../../middleware/auth";
 import { db } from "../../database";
 import * as schema from "../../database/schema";
 import { parseDesignFiles } from "./cart";
+import { activeDiscountPercent, applyDiscount } from "../../lib/pricing";
 import { recordOrderStatusChange } from "../../services/order-status-history";
 
 function generateOrderNumber() {
@@ -97,10 +98,10 @@ export const orders = {
 
       const createdOrders = [];
       for (const [fulfillmentType, groupRows] of groups) {
-        const subtotalCents = groupRows.reduce(
-          (sum, row) => sum + (row.variant?.priceCents ?? 0) * row.qty,
-          0,
-        );
+        // The customer pays the discounted price; it is frozen into the order line below.
+        const unitPrice = (row: (typeof groupRows)[number]) =>
+          row.variant ? applyDiscount(row.variant.priceCents, activeDiscountPercent(row.product)) : 0;
+        const subtotalCents = groupRows.reduce((sum, row) => sum + unitPrice(row) * row.qty, 0);
 
         const [order] = await db
           .insert(schema.orders)
@@ -138,8 +139,8 @@ export const orders = {
               productId: row.product.id,
               variantId: row.variant.id,
               qty: row.qty,
-              unitPriceCents: row.variant.priceCents,
-              lineTotalCents: row.variant.priceCents * row.qty,
+              unitPriceCents: unitPrice(row),
+              lineTotalCents: unitPrice(row) * row.qty,
               designStatus,
               designMode: mode,
               designBrief: row.designBrief,

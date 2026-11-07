@@ -65,6 +65,10 @@ export const products = sqliteTable("products", {
   allowDirectPurchase: integer("allow_direct_purchase", { mode: "boolean" }).notNull().default(true),
   allowRfq: integer("allow_rfq", { mode: "boolean" }).notNull().default(true),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  /** Storefront discount, 0-100. Applied to every variant price while active (see lib/pricing.ts). */
+  discountPercent: integer("discount_percent").notNull().default(0),
+  /** Optional end of the discount; null = no expiry. */
+  discountEndsAt: integer("discount_ends_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -72,6 +76,34 @@ export const products = sqliteTable("products", {
     .notNull()
     .$defaultFn(() => new Date())
     .$onUpdate(() => new Date()),
+});
+
+/**
+ * Marketplace hero slides (product spotlights and offers). Admin-managed.
+ * Click-through goes to the linked product, else the linked category, else linkUrl.
+ * Without a title the image is shown full-bleed (for uploaded ready-made banners).
+ */
+export const marketplaceBanners = sqliteTable("marketplace_banners", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  titleEn: text("title_en"),
+  titleAr: text("title_ar"),
+  subtitleEn: text("subtitle_en"),
+  subtitleAr: text("subtitle_ar"),
+  /** Small highlight chip, e.g. "Limited offer". Falls back to "-20%" when the linked product is discounted. */
+  badgeEn: text("badge_en"),
+  badgeAr: text("badge_ar"),
+  /** Call-to-action button label; falls back to the generic "View details". */
+  ctaEn: text("cta_en"),
+  ctaAr: text("cta_ar"),
+  imageKey: text("image_key").notNull(),
+  productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
+  categoryId: integer("category_id").references(() => categories.id, { onDelete: "set null" }),
+  linkUrl: text("link_url"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 /** Product photos, stored in S3/Tigris — only the object key lives here. */

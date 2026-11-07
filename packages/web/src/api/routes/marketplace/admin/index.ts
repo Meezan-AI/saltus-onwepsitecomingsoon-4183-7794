@@ -1,3 +1,4 @@
+import { banners } from "./banners";
 import { categories } from "./categories";
 import { customers } from "./customers";
 import { designReviews } from "./design-reviews";
@@ -12,6 +13,7 @@ import { auditLog } from "./audit-log";
 /** Admin dashboard API — report section 4. Composition only; logic lives in the sibling files. */
 export const admin = {
   products,
+  banners,
   productOptions,
   categories,
   orders,

@@ -26,3 +26,7 @@ export function useProduct(slug: string | undefined) {
     }),
   );
 }
+
+export function useBanners() {
+  return useQuery(orpc.catalog.banners.list.queryOptions({ staleTime: 60_000 }));
+}

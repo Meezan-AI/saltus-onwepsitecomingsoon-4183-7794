@@ -847,6 +847,13 @@ export const ar: Content = {
       directPurchase: "شراء مباشر",
       requestQuote: "طلب عرض سعر",
       viewDetails: "عرض التفاصيل",
+      off: "خصم {pct}%",
+    },
+    hero: {
+      defaultCta: "تسوّق الآن",
+      prev: "الشريحة السابقة",
+      next: "الشريحة التالية",
+      goTo: "الانتقال إلى الشريحة {n}",
     },
     product: {
       backToMarketplace: "الرجوع إلى المتجر",
