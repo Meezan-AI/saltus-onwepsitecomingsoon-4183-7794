@@ -50,6 +50,7 @@ const STATUS_VARIANTS: Record<string, BadgeVariant> = {
   changes_requested: "red",
   not_required: "neutral",
   pending_upload: "neutral",
+  design_requested: "orange",
   paid: "green",
   pending: "yellow",
   failed: "red",

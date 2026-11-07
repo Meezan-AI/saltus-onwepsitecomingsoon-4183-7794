@@ -31,3 +31,12 @@ export function useReviewDesign() {
     }),
   );
 }
+
+export function useCompleteRequestedDesign() {
+  const qc = useQueryClient();
+  return useMutation(
+    orpc.admin.designReviews.completeRequested.mutationOptions({
+      onSuccess: () => qc.invalidateQueries({ queryKey: orpc.admin.designReviews.key() }),
+    }),
+  );
+}

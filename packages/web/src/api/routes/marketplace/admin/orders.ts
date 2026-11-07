@@ -49,6 +49,8 @@ export const orders = {
           unitPriceCents: schema.orderItems.unitPriceCents,
           lineTotalCents: schema.orderItems.lineTotalCents,
           designStatus: schema.orderItems.designStatus,
+          designMode: schema.orderItems.designMode,
+          designBrief: schema.orderItems.designBrief,
           product: schema.products,
         })
         .from(schema.orderItems)

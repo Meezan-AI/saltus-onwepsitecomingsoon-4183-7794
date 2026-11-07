@@ -16,7 +16,15 @@ function isAllowedFile(file: File) {
  * Supports several files per submission (e.g. a t-shirt's front + back artwork),
  * all grouped under one version and reviewed together by the admin.
  */
-export function DesignUploader({ orderItemId, designStatus }: { orderItemId: number; designStatus: string }) {
+export function DesignUploader({
+  orderItemId,
+  designStatus,
+  designBrief,
+}: {
+  orderItemId: number;
+  designStatus: string;
+  designBrief?: string | null;
+}) {
   const { t, dir } = useLang();
   const tx = t.account.designUpload;
   const filesQuery = useDesignFiles(orderItemId);
@@ -34,7 +42,7 @@ export function DesignUploader({ orderItemId, designStatus }: { orderItemId: num
   const latestVersion = files.length ? Math.max(...files.map((f) => f.version)) : 0;
   const latestFiles = files.filter((f) => f.version === latestVersion);
   const reviewerNote = latestFiles.find((f) => f.reviewerNote)?.reviewerNote;
-  const canUpload = ["pending_upload", "changes_requested"].includes(designStatus);
+  const canUpload = ["pending_upload", "changes_requested", "design_requested"].includes(designStatus);
 
   function handlePick(list: FileList | null) {
     if (!list) return;
@@ -77,6 +85,16 @@ export function DesignUploader({ orderItemId, designStatus }: { orderItemId: num
 
       {designStatus === "submitted" || designStatus === "in_review" ? (
         <p className="mt-2 text-xs text-[#B9C2D0]/80">{tx.waitingReview}</p>
+      ) : null}
+      {designStatus === "design_requested" ? (
+        <div className="mt-2">
+          <p className="text-xs text-[#B9C2D0]/80">{tx.requestedNotice}</p>
+          {designBrief && (
+            <p className="mt-1 whitespace-pre-wrap text-xs text-[#B9C2D0]/80">
+              <span className="font-semibold text-white/80">{tx.requestedBriefLabel}:</span> {designBrief}
+            </p>
+          )}
+        </div>
       ) : null}
       {designStatus === "approved" ? <p className="mt-2 text-xs text-[#6FE3A3]">{tx.approvedNotice}</p> : null}
       {designStatus === "changes_requested" ? (
@@ -126,7 +144,7 @@ export function DesignUploader({ orderItemId, designStatus }: { orderItemId: num
               className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-white transition-colors hover:border-[#FF6B00] hover:text-[#FF6B00]"
             >
               <UploadCloud size={14} />
-              {designStatus === "changes_requested" ? tx.reupload : tx.chooseFiles}
+              {designStatus === "changes_requested" ? tx.reupload : designStatus === "design_requested" ? tx.addReferences : tx.chooseFiles}
             </label>
             {selected.length > 0 && (
               <>

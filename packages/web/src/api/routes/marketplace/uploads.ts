@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -45,6 +45,30 @@ export const uploads = {
       if (!order || order.userId !== context.user.id) throw new ORPCError("FORBIDDEN");
 
       const key = `design-files/${order.id}/${Date.now()}-${sanitize(input.filename)}`;
+      const url = await getSignedUrl(
+        s3,
+        new PutObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key, ContentType: input.contentType }),
+        { expiresIn: 600 },
+      );
+      return { url, key };
+    }),
+
+  /**
+   * Customer — design files attached to a cart line at checkout, before the
+   * order (and its order item) exists. Private, same as presignDesignFile;
+   * the key is namespaced by cart item so cart.setItemDesign can verify it.
+   */
+  presignCartDesignFile: authed
+    .input(z.object({ cartItemId: z.number(), filename: z.string(), contentType: z.string() }))
+    .handler(async ({ context, input }) => {
+      const [row] = await db
+        .select({ id: schema.cartItems.id })
+        .from(schema.cartItems)
+        .innerJoin(schema.carts, eq(schema.cartItems.cartId, schema.carts.id))
+        .where(and(eq(schema.cartItems.id, input.cartItemId), eq(schema.carts.userId, context.user.id)));
+      if (!row) throw new ORPCError("NOT_FOUND");
+
+      const key = `design-files/cart-${row.id}/${Date.now()}-${sanitize(input.filename)}`;
       const url = await getSignedUrl(
         s3,
         new PutObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key, ContentType: input.contentType }),

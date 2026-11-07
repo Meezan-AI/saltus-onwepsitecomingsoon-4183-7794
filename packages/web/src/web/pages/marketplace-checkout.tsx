@@ -6,7 +6,8 @@ import { Nav } from "../components/nav";
 import { Footer } from "../components/footer";
 import { ProtectedRoute } from "../components/marketplace/protected-route";
 import { AddressForm } from "../components/marketplace/address-form";
-import { useCart } from "../queries/cart";
+import { useCart, useSetCartItemDesign } from "../queries/cart";
+import { CartItemDesign, isDesignChoiceComplete, type DesignChoice } from "../components/marketplace/cart-item-design";
 import { useAddresses } from "../queries/addresses";
 import { useCheckout } from "../queries/orders";
 import { formatPriceCents } from "../lib/money";
@@ -22,10 +23,12 @@ function CheckoutContent() {
   const cartQuery = useCart();
   const addressesQuery = useAddresses();
   const checkout = useCheckout();
+  const setItemDesign = useSetCartItemDesign();
 
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
   const [addingAddress, setAddingAddress] = useState(false);
   const [notes, setNotes] = useState("");
+  const [designEdits, setDesignEdits] = useState<Record<number, DesignChoice>>({});
 
   const items = cartQuery.data?.items ?? [];
   const needsDelivery = items.some((item) => item.product.fulfillmentType !== "pickup_rental");
@@ -36,9 +39,30 @@ function CheckoutContent() {
   const effectiveAddressId =
     selectedAddressId ?? addresses.find((a) => a.isDefault)?.id ?? addresses[0]?.id ?? null;
 
+  function choiceFor(item: (typeof items)[number]): DesignChoice {
+    return (
+      designEdits[item.id] ?? {
+        mode: item.designMode as DesignChoice["mode"],
+        brief: item.designBrief ?? "",
+        files: item.designFiles,
+      }
+    );
+  }
+  const designsComplete = items.every((item) => isDesignChoiceComplete(choiceFor(item)));
+
   async function placeOrder() {
     if (needsDelivery && !effectiveAddressId) return;
+    if (!designsComplete) return;
     try {
+      for (const item of items) {
+        const choice = choiceFor(item);
+        await setItemDesign.mutateAsync({
+          itemId: item.id,
+          mode: choice.mode!,
+          brief: choice.brief || undefined,
+          files: choice.files,
+        });
+      }
       const createdOrders = await checkout.mutateAsync({
         deliveryAddressId: needsDelivery ? (effectiveAddressId ?? undefined) : undefined,
         notes: notes || undefined,
@@ -148,6 +172,24 @@ function CheckoutContent() {
 
               <div className="glass-card rounded-2xl p-6">
                 <h2 className="font-display text-sm font-bold uppercase tracking-wide text-white/80">
+                  {t.checkout.design.title}
+                </h2>
+                <p className="mt-2 text-sm text-[#B9C2D0]">{t.checkout.design.intro}</p>
+                <div className="mt-4 space-y-4">
+                  {items.map((item) => (
+                    <CartItemDesign
+                      key={item.id}
+                      cartItemId={item.id}
+                      title={`${lang === "ar" ? item.product.nameAr : item.product.nameEn} × ${item.qty}`}
+                      value={choiceFor(item)}
+                      onChange={(next) => setDesignEdits((prev) => ({ ...prev, [item.id]: next }))}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="glass-card rounded-2xl p-6">
+                <h2 className="font-display text-sm font-bold uppercase tracking-wide text-white/80">
                   {t.checkout.notesLabel}
                 </h2>
                 <textarea
@@ -191,15 +233,20 @@ function CheckoutContent() {
                 </span>
               </div>
 
-              {checkout.isError && <p className="mt-3 text-sm text-[#FF8A8A]">{t.checkout.error}</p>}
+              {!designsComplete && <p className="mt-3 text-xs text-[#FFB27A]">{t.checkout.design.chooseFirst}</p>}
+              {(checkout.isError || setItemDesign.isError) && (
+                <p className="mt-3 text-sm text-[#FF8A8A]">
+                  {setItemDesign.isError ? t.checkout.design.errorGeneric : t.checkout.error}
+                </p>
+              )}
 
               <button
                 onClick={placeOrder}
-                disabled={checkout.isPending || (needsDelivery && !effectiveAddressId)}
+                disabled={checkout.isPending || setItemDesign.isPending || !designsComplete || (needsDelivery && !effectiveAddressId)}
                 className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#FF6B00] px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#FF8A3D] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {checkout.isPending && <Loader2 size={16} className="animate-spin" />}
-                {checkout.isPending ? t.checkout.placingOrder : t.checkout.placeOrder}
+                {(checkout.isPending || setItemDesign.isPending) && <Loader2 size={16} className="animate-spin" />}
+                {checkout.isPending || setItemDesign.isPending ? t.checkout.placingOrder : t.checkout.placeOrder}
               </button>
             </div>
           </div>

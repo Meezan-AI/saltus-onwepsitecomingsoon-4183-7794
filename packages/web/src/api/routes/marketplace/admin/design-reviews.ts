@@ -31,7 +31,7 @@ async function maybeAdvanceOrder(orderId: number, changedBy: string) {
  * Customer uploads live in routes/marketplace/designs.ts.
  */
 export const designReviews = {
-  /** Order items with a design file awaiting a decision. */
+  /** Order items with a design file awaiting a decision, or a customer design request awaiting our designers. */
   queue: adminOnly.handler(async () => {
     const pendingItems = await db
       .select({
@@ -39,13 +39,15 @@ export const designReviews = {
         orderId: schema.orderItems.orderId,
         productId: schema.orderItems.productId,
         designStatus: schema.orderItems.designStatus,
+        designMode: schema.orderItems.designMode,
+        designBrief: schema.orderItems.designBrief,
         order: schema.orders,
         product: schema.products,
       })
       .from(schema.orderItems)
       .innerJoin(schema.orders, eq(schema.orderItems.orderId, schema.orders.id))
       .innerJoin(schema.products, eq(schema.orderItems.productId, schema.products.id))
-      .where(inArray(schema.orderItems.designStatus, ["submitted", "in_review"]));
+      .where(inArray(schema.orderItems.designStatus, ["submitted", "in_review", "design_requested"]));
 
     return pendingItems;
   }),
@@ -57,6 +59,26 @@ export const designReviews = {
       .where(eq(schema.designFiles.orderItemId, input.orderItemId))
       .orderBy(desc(schema.designFiles.version)),
   ),
+
+  /**
+   * Customer asked Saltus to create the design ("design_requested"). Once our
+   * designers have produced and agreed it with the customer, mark it approved
+   * so the order can move on — there is no customer file to review in this case.
+   */
+  completeRequested: adminOnly.input(z.object({ orderItemId: z.number() })).handler(async ({ context, input }) => {
+    const [existing] = await db.select().from(schema.orderItems).where(eq(schema.orderItems.id, input.orderItemId));
+    if (!existing) throw new ORPCError("NOT_FOUND");
+    if (existing.designStatus !== "design_requested") {
+      throw new ORPCError("BAD_REQUEST", { message: "This item is not a design request" });
+    }
+    const [item] = await db
+      .update(schema.orderItems)
+      .set({ designStatus: "approved" })
+      .where(eq(schema.orderItems.id, input.orderItemId))
+      .returning();
+    await maybeAdvanceOrder(item.orderId, context.user.id);
+    return item;
+  }),
 
   /** Mark an item as not needing a design at all — the manual override from report section 8. */
   markNotRequired: adminOnly.input(z.object({ orderItemId: z.number() })).handler(async ({ context, input }) => {

@@ -153,7 +153,7 @@ function OrderDetailContent() {
                         </span>
                       </span>
                     </div>
-                    <DesignUploader orderItemId={item.id} designStatus={item.designStatus} />
+                    <DesignUploader orderItemId={item.id} designStatus={item.designStatus} designBrief={item.designBrief} />
                   </div>
                 );
               })}

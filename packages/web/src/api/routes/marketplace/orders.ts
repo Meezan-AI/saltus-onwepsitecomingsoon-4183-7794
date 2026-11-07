@@ -4,6 +4,7 @@ import { ORPCError } from "@orpc/server";
 import { authed } from "../../middleware/auth";
 import { db } from "../../database";
 import * as schema from "../../database/schema";
+import { parseDesignFiles } from "./cart";
 import { recordOrderStatusChange } from "../../services/order-status-history";
 
 function generateOrderNumber() {
@@ -25,6 +26,8 @@ async function orderWithItems(orderId: number) {
       unitPriceCents: schema.orderItems.unitPriceCents,
       lineTotalCents: schema.orderItems.lineTotalCents,
       designStatus: schema.orderItems.designStatus,
+      designMode: schema.orderItems.designMode,
+      designBrief: schema.orderItems.designBrief,
       product: schema.products,
       variant: schema.productVariants,
     })
@@ -60,7 +63,11 @@ export const orders = {
 
       const rows = await db
         .select({
+          cartItemId: schema.cartItems.id,
           qty: schema.cartItems.qty,
+          designMode: schema.cartItems.designMode,
+          designBrief: schema.cartItems.designBrief,
+          designFilesJson: schema.cartItems.designFilesJson,
           product: schema.products,
           variant: schema.productVariants,
         })
@@ -108,16 +115,62 @@ export const orders = {
           })
           .returning();
 
+        const startingStatuses: string[] = [];
         for (const row of groupRows) {
           if (!row.variant) continue;
-          await db.insert(schema.orderItems).values({
-            orderId: order.id,
-            productId: row.product.id,
-            variantId: row.variant.id,
-            qty: row.qty,
-            unitPriceCents: row.variant.priceCents,
-            lineTotalCents: row.variant.priceCents * row.qty,
-          });
+          const mode = (row.designMode ?? "later") as "own" | "request" | "none" | "later";
+          const files = parseDesignFiles(row.designFilesJson);
+          // "own" without any file yet behaves like "later": the customer can still upload from the order page.
+          const designStatus =
+            mode === "request"
+              ? "design_requested"
+              : mode === "none"
+                ? "not_required"
+                : mode === "own" && files.length
+                  ? "submitted"
+                  : "pending_upload";
+          startingStatuses.push(designStatus);
+
+          const [orderItem] = await db
+            .insert(schema.orderItems)
+            .values({
+              orderId: order.id,
+              productId: row.product.id,
+              variantId: row.variant.id,
+              qty: row.qty,
+              unitPriceCents: row.variant.priceCents,
+              lineTotalCents: row.variant.priceCents * row.qty,
+              designStatus,
+              designMode: mode,
+              designBrief: row.designBrief,
+            })
+            .returning();
+
+          if (files.length) {
+            await db.insert(schema.designFiles).values(
+              files.map((f) => ({
+                orderItemId: orderItem.id,
+                s3Key: f.s3Key,
+                fileName: f.fileName,
+                mimeType: f.mimeType,
+                sizeBytes: f.sizeBytes,
+                version: 1,
+                uploadedBy: context.user.id,
+                status: "submitted" as const,
+              })),
+            );
+          }
+        }
+
+        // Where the order starts, based on what the customer chose for its lines.
+        const startStatus = startingStatuses.every((st) => st === "not_required")
+          ? "design_approved"
+          : startingStatuses.some((st) => st === "submitted" || st === "design_requested")
+            ? "design_in_review"
+            : "design_pending";
+        if (startStatus !== order.status) {
+          await db.update(schema.orders).set({ status: startStatus }).where(eq(schema.orders.id, order.id));
+          order.status = startStatus;
         }
 
         createdOrders.push(order);

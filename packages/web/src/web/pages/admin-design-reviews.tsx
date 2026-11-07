@@ -8,6 +8,7 @@ import { Textarea } from "../components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import {
   useDesignFilesForItem,
+  useCompleteRequestedDesign,
   useDesignReviewQueue,
   useMarkDesignNotRequired,
   useReviewDesign,
@@ -15,9 +16,21 @@ import {
 import { useDesignFileUrl } from "../queries/designs";
 import { statusVariant, titleCase } from "../lib/admin-format";
 
-function ReviewDialog({ orderItemId, onClose }: { orderItemId: number; onClose: () => void }) {
+function ReviewDialog({
+  orderItemId,
+  designStatus,
+  designBrief,
+  onClose,
+}: {
+  orderItemId: number;
+  designStatus: string;
+  designBrief: string | null;
+  onClose: () => void;
+}) {
+  const isRequest = designStatus === "design_requested";
   const files = useDesignFilesForItem(orderItemId);
   const review = useReviewDesign();
+  const complete = useCompleteRequestedDesign();
   const fileUrl = useDesignFileUrl();
   const [note, setNote] = useState("");
 
@@ -31,13 +44,22 @@ function ReviewDialog({ orderItemId, onClose }: { orderItemId: number; onClose: 
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogHeader onClose={onClose}>
-        <DialogTitle>Review Design — Order Item #{orderItemId}</DialogTitle>
+        <DialogTitle>
+          {isRequest ? "Design Request" : "Review Design"} — Order Item #{orderItemId}
+        </DialogTitle>
       </DialogHeader>
+
+      {isRequest && (
+        <div className="mb-4 rounded-lg border border-[#FF6B00]/30 bg-[#FF6B00]/10 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#FF8A3D]">Customer brief</p>
+          <p className="mt-1 whitespace-pre-wrap text-sm text-white">{designBrief || "No brief provided."}</p>
+        </div>
+      )}
 
       {files.isPending ? (
         <Loader2 className="animate-spin text-[#FF6B00]" />
       ) : !files.data?.length ? (
-        <p className="text-sm text-[#B9C2D0]">No files uploaded yet.</p>
+        <p className="text-sm text-[#B9C2D0]">{isRequest ? "No reference files attached." : "No files uploaded yet."}</p>
       ) : (
         <div className="space-y-2">
           {files.data
@@ -55,6 +77,19 @@ function ReviewDialog({ orderItemId, onClose }: { orderItemId: number; onClose: 
         </div>
       )}
 
+      {isRequest ? (
+        <DialogFooter>
+          <button
+            type="button"
+            disabled={complete.isPending}
+            onClick={() => complete.mutate({ orderItemId }, { onSuccess: onClose })}
+            className="rounded-full bg-[#FF6B00] px-4 py-2 text-sm font-semibold text-white hover:bg-[#FF8A3D] disabled:opacity-50"
+          >
+            Mark design complete
+          </button>
+        </DialogFooter>
+      ) : (
+        <>
       <div className="mt-4">
         <Textarea placeholder="Reviewer note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
       </div>
@@ -87,6 +122,8 @@ function ReviewDialog({ orderItemId, onClose }: { orderItemId: number; onClose: 
           Approve
         </button>
       </DialogFooter>
+        </>
+      )}
     </Dialog>
   );
 }
@@ -95,6 +132,7 @@ function DesignReviewsContent() {
   const queue = useDesignReviewQueue();
   const markNotRequired = useMarkDesignNotRequired();
   const [reviewing, setReviewing] = useState<number | null>(null);
+  const reviewingItem = queue.data?.find((i) => i.id === reviewing);
 
   return (
     <AdminLayout title="Design Reviews">
@@ -117,7 +155,14 @@ function DesignReviewsContent() {
               {queue.data.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>{item.order?.orderNumber}</TableCell>
-                  <TableCell>{item.product?.nameEn}</TableCell>
+                  <TableCell>
+                    {item.product?.nameEn}
+                    {item.designStatus === "design_requested" && item.designBrief && (
+                      <p className="mt-1 max-w-xs truncate text-xs text-[#B9C2D0]/70" title={item.designBrief}>
+                        {item.designBrief}
+                      </p>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={statusVariant(item.designStatus)}>{titleCase(item.designStatus)}</Badge>
                   </TableCell>
@@ -128,7 +173,7 @@ function DesignReviewsContent() {
                         onClick={() => setReviewing(item.id)}
                         className="rounded-full bg-[#FF6B00] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#FF8A3D]"
                       >
-                        Review
+                        {item.designStatus === "design_requested" ? "Open Request" : "Review"}
                       </button>
                       <button
                         type="button"
@@ -147,7 +192,14 @@ function DesignReviewsContent() {
         </div>
       )}
 
-      {reviewing != null && <ReviewDialog orderItemId={reviewing} onClose={() => setReviewing(null)} />}
+      {reviewing != null && reviewingItem && (
+        <ReviewDialog
+          orderItemId={reviewing}
+          designStatus={reviewingItem.designStatus}
+          designBrief={reviewingItem.designBrief}
+          onClose={() => setReviewing(null)}
+        />
+      )}
     </AdminLayout>
   );
 }

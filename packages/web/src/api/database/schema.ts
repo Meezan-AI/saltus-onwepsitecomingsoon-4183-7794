@@ -149,6 +149,16 @@ export const cartItems = sqliteTable("cart_items", {
     .references(() => products.id),
   variantId: integer("variant_id").references(() => productVariants.id),
   qty: integer("qty").notNull().default(1),
+  /**
+   * How the customer wants to handle artwork for this line, chosen at checkout:
+   * own (I upload my files) | request (Saltus designs it) | none (no design needed)
+   * | later (decide after ordering). Null = not chosen yet.
+   */
+  designMode: text("design_mode"),
+  /** Free-text brief for a design request (or notes that go with uploaded files). */
+  designBrief: text("design_brief"),
+  /** JSON array of {s3Key,fileName,mimeType,sizeBytes} uploaded before the order exists. */
+  designFilesJson: text("design_files_json"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -199,9 +209,14 @@ export const orderItems = sqliteTable("order_items", {
   lineTotalCents: integer("line_total_cents").notNull(),
   /**
    * pending_upload | submitted | in_review | approved | changes_requested |
-   * not_required (admin override — see report section 8)
+   * not_required (admin override — see report section 8) |
+   * design_requested (customer asked Saltus to create the design)
    */
   designStatus: text("design_status").notNull().default("pending_upload"),
+  /** own | request | none | later — what the customer picked at checkout. */
+  designMode: text("design_mode"),
+  /** The customer's design brief (what to design, text, colours, size, deadline). */
+  designBrief: text("design_brief"),
 });
 
 /** Versioned design uploads per order item — files live in S3/Tigris, only metadata here. */

@@ -80,7 +80,11 @@ export const designs = {
         )
         .returning();
 
-      await db.update(schema.orderItems).set({ designStatus: "submitted" }).where(eq(schema.orderItems.id, item.id));
+      // Files added to a "please design this for me" line are references/logos for our designers,
+      // not a design to review, so the line stays in design_requested.
+      if (item.designStatus !== "design_requested") {
+        await db.update(schema.orderItems).set({ designStatus: "submitted" }).where(eq(schema.orderItems.id, item.id));
+      }
 
       // First design upload on the order moves it out of "design_pending" and into the admin's review queue.
       const [order] = await db.select().from(schema.orders).where(eq(schema.orders.id, item.orderId));

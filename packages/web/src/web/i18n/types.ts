@@ -473,6 +473,7 @@ export type Content = {
       approved: string;
       changes_requested: string;
       not_required: string;
+      design_requested: string;
     };
     designUpload: {
       title: string;
@@ -494,6 +495,9 @@ export type Content = {
       changesRequestedNotice: string;
       reviewerNoteLabel: string;
       notRequiredNotice: string;
+      requestedNotice: string;
+      requestedBriefLabel: string;
+      addReferences: string;
     };
   };
   cart: {
@@ -531,6 +535,33 @@ export type Content = {
     placeOrder: string;
     placingOrder: string;
     error: string;
+    design: {
+      title: string;
+      intro: string;
+      chooseFirst: string;
+      own: string;
+      ownDesc: string;
+      request: string;
+      requestDesc: string;
+      none: string;
+      noneDesc: string;
+      later: string;
+      laterDesc: string;
+      briefLabel: string;
+      briefPlaceholder: string;
+      briefOwnLabel: string;
+      briefOwnPlaceholder: string;
+      chooseFiles: string;
+      filesHintOwn: string;
+      filesHintRequest: string;
+      attached: string;
+      remove: string;
+      uploading: string;
+      errorType: string;
+      errorSize: string;
+      errorGeneric: string;
+      saved: string;
+    };
     addressForm: {
       labelField: string;
       recipientName: string;

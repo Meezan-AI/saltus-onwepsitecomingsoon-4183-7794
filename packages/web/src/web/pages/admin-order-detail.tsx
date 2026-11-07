@@ -66,6 +66,9 @@ function OrderDetailContent({ id }: { id: number }) {
                       <TableCell>{formatCents(item.lineTotalCents, o.currency)}</TableCell>
                       <TableCell>
                         <Badge variant={statusVariant(item.designStatus)}>{titleCase(item.designStatus)}</Badge>
+                        {item.designBrief && (
+                          <p className="mt-1 max-w-xs whitespace-pre-wrap text-xs text-[#B9C2D0]/80">{item.designBrief}</p>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

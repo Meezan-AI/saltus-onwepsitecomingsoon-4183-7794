@@ -36,6 +36,7 @@ const DESIGN_STATUS_TONE: Record<string, Tone> = {
   approved: "success",
   changes_requested: "danger",
   not_required: "neutral",
+  design_requested: "warning",
 };
 
 export function StatusBadge({ label, tone }: { label: string; tone: Tone }) {
