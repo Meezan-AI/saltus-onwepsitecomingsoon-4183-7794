@@ -110,6 +110,16 @@ function RfqDetailContent() {
             </div>
           </div>
 
+          {(request.contactEmail || request.contactWhatsapp) && (
+            <div className="glass-card mt-4 rounded-2xl p-6">
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/60">{t.rfqRequest.contactLabel}</p>
+              <div className="mt-2 space-y-1 text-sm text-white" dir="ltr" style={{ textAlign: dir === "rtl" ? "right" : "left" }}>
+                {request.contactEmail && <p>{request.contactEmail}</p>}
+                {request.contactWhatsapp && <p>{request.contactWhatsapp}</p>}
+              </div>
+            </div>
+          )}
+
           {request.notes && (
             <div className="glass-card mt-4 rounded-2xl p-6">
               <p className="text-xs font-semibold uppercase tracking-wide text-white/60">{t.account.rfqDetail.notesLabel}</p>

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "wouter";
-import { ArrowLeft, ArrowRight, Check, Loader2, Minus, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2, Minus, Plus, MessageCircle } from "lucide-react";
 import { Seo } from "../components/seo";
 import { Nav } from "../components/nav";
 import { Footer } from "../components/footer";
@@ -8,9 +8,21 @@ import { useProduct } from "../queries/catalog";
 import { useSession } from "../queries/account";
 import { useCreateRfq } from "../queries/rfq";
 import { useLang } from "../i18n";
+import { PHONE_E164 } from "../lib/contact";
 
 const textareaClass =
   "w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none transition-colors focus:border-[#FF6B00] focus:bg-white/[0.07]";
+
+const inputClass =
+  "w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none transition-colors focus:border-[#FF6B00] focus:bg-white/[0.07]";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Mirrors the server's normalisation closely enough to catch typos before submitting. */
+function looksLikePhone(value: string) {
+  const digits = value.replace(/[\s\-().]/g, "");
+  return /^\+?\d{8,15}$/.test(digits);
+}
 
 export default function MarketplaceRfqPage() {
   const { productSlug } = useParams<{ productSlug: string }>();
@@ -22,6 +34,16 @@ export default function MarketplaceRfqPage() {
   const [selectedVariantId, setSelectedVariantId] = useState<number | "any">("any");
   const [qty, setQty] = useState(1);
   const [notes, setNotes] = useState("");
+  const [email, setEmail] = useState("");
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [whatsapp, setWhatsapp] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Prefill with the account email once, unless the customer already typed one.
+  const accountEmail = session?.user?.email ?? "";
+  useEffect(() => {
+    if (accountEmail && !emailTouched) setEmail(accountEmail);
+  }, [accountEmail, emailTouched]);
 
   if (query.isLoading) {
     return (
@@ -62,12 +84,37 @@ export default function MarketplaceRfqPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const em = email.trim();
+    const wa = whatsapp.trim();
+    if (!em && !wa) return setFormError(t.rfqRequest.contactRequired);
+    if (em && !EMAIL_RE.test(em)) return setFormError(t.rfqRequest.invalidEmail);
+    if (wa && !looksLikePhone(wa)) return setFormError(t.rfqRequest.invalidWhatsapp);
+    setFormError(null);
     await createRfq.mutateAsync({
       productId: product!.id,
       variantId: selectedVariantId === "any" ? undefined : selectedVariantId,
       qty,
       notes: notes || undefined,
+      contactEmail: em || undefined,
+      contactWhatsapp: wa || undefined,
     });
+  }
+
+  /** Pre-filled WhatsApp message to Saltus, so the request can also land on their phone instantly. */
+  function buildWhatsappLink() {
+    const w = t.rfqRequest.waMessage;
+    const sent = createRfq.data;
+    const variant = product!.variants.find((v) => v.id === sent?.variantId);
+    const lines = [
+      w.intro.replace("{id}", String(sent?.id ?? "")),
+      `${w.product}: ${name}`,
+      variant ? `${w.option}: ${variant.name}` : "",
+      `${w.qty}: ${sent?.qty ?? qty}`,
+      sent?.notes ? `${w.notes}: ${sent.notes}` : "",
+      sent?.contactEmail ? `${w.email}: ${sent.contactEmail}` : "",
+      sent?.contactWhatsapp ? `${w.whatsapp}: ${sent.contactWhatsapp}` : "",
+    ].filter(Boolean);
+    return `https://wa.me/${PHONE_E164.replace("+", "")}?text=${encodeURIComponent(lines.join("\n"))}`;
   }
 
   return (
@@ -110,6 +157,20 @@ export default function MarketplaceRfqPage() {
               <Check size={32} className="mx-auto text-[#6FE3A8]" />
               <p className="font-display mt-4 text-xl font-bold text-white">{t.rfqRequest.successTitle}</p>
               <p className="mt-2 text-sm text-[#B9C2D0]">{t.rfqRequest.successDesc}</p>
+              <div className="mt-5 space-y-1 text-sm text-white/80" dir="ltr">
+                {createRfq.data?.contactEmail && <p>{createRfq.data.contactEmail}</p>}
+                {createRfq.data?.contactWhatsapp && <p>{createRfq.data.contactWhatsapp}</p>}
+              </div>
+              <a
+                href={buildWhatsappLink()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#25D366] px-6 py-3 text-sm font-semibold text-[#06260f] transition-colors hover:bg-[#3be37a]"
+              >
+                <MessageCircle size={16} />
+                {t.rfqRequest.sendWhatsapp}
+              </a>
+              <p className="mx-auto mt-2 max-w-sm text-xs text-[#B9C2D0]/70">{t.rfqRequest.sendWhatsappHint}</p>
               <Link
                 href={`/account/rfqs/${createRfq.data?.id}`}
                 className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#FF6B00] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#FF8A3D]"
@@ -185,6 +246,49 @@ export default function MarketplaceRfqPage() {
                 />
               </div>
 
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                <p className="text-sm font-semibold text-white">{t.rfqRequest.contactTitle}</p>
+                <p className="mt-1 text-xs text-[#B9C2D0]">{t.rfqRequest.contactHint}</p>
+                <div className="mt-4 space-y-4">
+                  <div>
+                    <label htmlFor="rfq-email" className="text-xs font-semibold uppercase tracking-wide text-white/60">
+                      {t.rfqRequest.emailLabel}
+                    </label>
+                    <input
+                      id="rfq-email"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      dir="ltr"
+                      value={email}
+                      onChange={(e) => {
+                        setEmailTouched(true);
+                        setEmail(e.target.value);
+                      }}
+                      placeholder="name@example.com"
+                      className={`${inputClass} mt-2 text-start`}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="rfq-whatsapp" className="text-xs font-semibold uppercase tracking-wide text-white/60">
+                      {t.rfqRequest.whatsappLabel}
+                    </label>
+                    <input
+                      id="rfq-whatsapp"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      dir="ltr"
+                      value={whatsapp}
+                      onChange={(e) => setWhatsapp(e.target.value)}
+                      placeholder={t.rfqRequest.whatsappPlaceholder}
+                      className={`${inputClass} mt-2 text-start`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {formError && <p className="text-sm text-[#FF8A8A]">{formError}</p>}
               {createRfq.isError && <p className="text-sm text-[#FF8A8A]">{t.rfqRequest.error}</p>}
 
               <button

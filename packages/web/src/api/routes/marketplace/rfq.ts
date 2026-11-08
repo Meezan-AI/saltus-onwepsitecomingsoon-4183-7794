@@ -5,6 +5,9 @@ import { authed } from "../../middleware/auth";
 import { db } from "../../database";
 import * as schema from "../../database/schema";
 import { recordOrderStatusChange } from "../../services/order-status-history";
+import { sendEmail } from "../../services/email";
+import { deskRouting } from "../../services/email-routing";
+import { normalizePhone } from "../../services/phone";
 
 function generateOrderNumber() {
   const date = new Date();
@@ -63,17 +66,63 @@ export const rfq = {
         variantId: z.number().optional(),
         qty: z.number().int().min(1).default(1),
         notes: z.string().max(2000).optional(),
+        contactEmail: z.string().trim().email().max(160).optional().or(z.literal("")),
+        contactWhatsapp: z.string().trim().max(40).optional().or(z.literal("")),
       }),
     )
     .handler(async ({ context, input }) => {
+      const contactEmail = input.contactEmail ? input.contactEmail.toLowerCase() : null;
+      let contactWhatsapp: string | null = null;
+      if (input.contactWhatsapp) {
+        contactWhatsapp = normalizePhone(input.contactWhatsapp);
+        if (!contactWhatsapp) throw new ORPCError("BAD_REQUEST", { message: "Invalid WhatsApp number" });
+      }
+      if (!contactEmail && !contactWhatsapp) {
+        throw new ORPCError("BAD_REQUEST", { message: "Provide an email or a WhatsApp number" });
+      }
+
       const [product] = await db.select().from(schema.products).where(eq(schema.products.id, input.productId));
       if (!product || !product.isActive) throw new ORPCError("NOT_FOUND", { message: "Product not found" });
       if (!product.allowRfq) throw new ORPCError("BAD_REQUEST", { message: "This product is direct-purchase only" });
 
+      const { productId, variantId, qty, notes } = input;
       const [request] = await db
         .insert(schema.rfqRequests)
-        .values({ ...input, userId: context.user.id })
+        .values({ productId, variantId, qty, notes, contactEmail, contactWhatsapp, userId: context.user.id })
         .returning();
+
+      // Best-effort heads-up to the Saltus inbox — the request is already saved
+      // and visible in Admin → RFQs, so a failed email never fails the request.
+      const variant = variantId
+        ? (await db.select().from(schema.productVariants).where(eq(schema.productVariants.id, variantId)))[0]
+        : undefined;
+      const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      const waLink = contactWhatsapp ? `https://wa.me/${contactWhatsapp.slice(1)}` : null;
+      const routing = deskRouting("contact");
+      void sendEmail({
+        to: routing.to,
+        from: routing.from,
+        replyTo: contactEmail ?? undefined,
+        subject: `New quote request RFQ-${request.id} — ${product.nameEn}`,
+        text: [
+          `New quote request RFQ-${request.id}`,
+          `Product: ${product.nameEn}${variant ? ` (${variant.name})` : ""}`,
+          `Quantity: ${qty}`,
+          `Customer: ${context.user.name} <${context.user.email}>`,
+          `Send quote to — email: ${contactEmail ?? "—"} | WhatsApp: ${contactWhatsapp ?? "—"}`,
+          notes ? `Notes: ${notes}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        html: `<div style="font-family:Arial,sans-serif;color:#0b1f3a"><h2>New quote request RFQ-${request.id}</h2>
+          <p><b>Product:</b> ${esc(product.nameEn)}${variant ? ` (${esc(variant.name)})` : ""}<br/>
+          <b>Quantity:</b> ${qty}<br/>
+          <b>Customer:</b> ${esc(context.user.name)} &lt;${esc(context.user.email)}&gt;<br/>
+          <b>Quote to — email:</b> ${contactEmail ? esc(contactEmail) : "—"}<br/>
+          <b>Quote to — WhatsApp:</b> ${waLink ? `<a href="${waLink}">${contactWhatsapp}</a>` : "—"}</p>
+          ${notes ? `<p><b>Notes:</b> ${esc(notes)}</p>` : ""}</div>`,
+      }).catch((err) => console.warn("[rfq] notification failed", err));
+
       return request;
     }),
 

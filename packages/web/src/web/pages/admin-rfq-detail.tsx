@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail, MessageCircle } from "lucide-react";
 import { AdminLayout } from "../components/admin/admin-layout";
 import { AdminProtectedRoute } from "../components/admin/admin-protected-route";
 import { Badge } from "../components/ui/badge";
@@ -29,6 +29,10 @@ function RfqDetailContent({ id }: { id: number }) {
 
   const r = rfq.data;
   const canAct = r.status === "new" || r.status === "quoted";
+  const quoteMessage =
+    r.quotedPriceCents != null
+      ? `Hello ${r.customer?.name ?? ""}, your quote RFQ-${r.id} for ${r.product?.nameEn ?? "the product"} (qty ${r.qty}) is ${formatCents(r.quotedPriceCents)}${r.validUntil ? `, valid until ${formatDate(r.validUntil)}` : ""}. You can accept it from your account on saltus-one.com. — Saltus ONE`
+      : `Hello ${r.customer?.name ?? ""}, regarding your quote request RFQ-${r.id} for ${r.product?.nameEn ?? "the product"} (qty ${r.qty}). — Saltus ONE`;
 
   return (
     <AdminLayout title={`RFQ-${r.id}`}>
@@ -72,6 +76,45 @@ function RfqDetailContent({ id }: { id: number }) {
         </div>
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Send quote to</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {!r.contactEmail && !r.contactWhatsapp && (
+                <p className="text-white/50">
+                  No contact details on this request (older request). Customer account email: {r.customer?.email ?? "—"}
+                </p>
+              )}
+              {r.contactWhatsapp && (
+                <div>
+                  <p className="text-white/50">WhatsApp</p>
+                  <p className="mt-0.5 text-white" dir="ltr">{r.contactWhatsapp}</p>
+                  <a
+                    href={`https://wa.me/${r.contactWhatsapp.replace("+", "")}?text=${encodeURIComponent(quoteMessage)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-2 text-xs font-semibold text-[#06260f] transition-colors hover:bg-[#3be37a]"
+                  >
+                    <MessageCircle size={14} /> Reply on WhatsApp
+                  </a>
+                </div>
+              )}
+              {r.contactEmail && (
+                <div>
+                  <p className="text-white/50">Email</p>
+                  <p className="mt-0.5 text-white" dir="ltr">{r.contactEmail}</p>
+                  <a
+                    href={`mailto:${r.contactEmail}?subject=${encodeURIComponent(`Your quote — RFQ-${r.id}`)}&body=${encodeURIComponent(quoteMessage)}`}
+                    className="mt-2 inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/5"
+                  >
+                    <Mail size={14} /> Send email
+                  </a>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Status</CardTitle>

@@ -37,6 +37,7 @@ function RfqsContent() {
               <TableRow>
                 <TableHead>#</TableHead>
                 <TableHead>Qty</TableHead>
+                <TableHead>Contact</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Requested</TableHead>
               </TableRow>
@@ -50,6 +51,10 @@ function RfqsContent() {
                     </Link>
                   </TableCell>
                   <TableCell>{rfq.qty}</TableCell>
+                  <TableCell className="text-xs" dir="ltr">
+                    {rfq.contactWhatsapp ?? "—"}
+                    {rfq.contactEmail && <div className="text-white/50">{rfq.contactEmail}</div>}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={statusVariant(rfq.status)}>{titleCase(rfq.status)}</Badge>
                   </TableCell>

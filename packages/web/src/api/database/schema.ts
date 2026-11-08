@@ -287,6 +287,10 @@ export const rfqRequests = sqliteTable("rfq_requests", {
   variantId: integer("variant_id").references(() => productVariants.id),
   qty: integer("qty").notNull().default(1),
   notes: text("notes"),
+  /** Where the customer wants the quote sent. At least one of the two is set. */
+  contactEmail: text("contact_email"),
+  /** E.164, e.g. +962795881811. */
+  contactWhatsapp: text("contact_whatsapp"),
   /** new | quoted | accepted | declined | expired */
   status: text("status").notNull().default("new"),
   quotedPriceCents: integer("quoted_price_cents"),

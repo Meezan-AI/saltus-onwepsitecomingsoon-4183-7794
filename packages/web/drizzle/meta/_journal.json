@@ -50,6 +50,13 @@
       "when": 1794091271868,
       "tag": "0006_kind_skullbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1794101976220,
+      "tag": "0007_known_doorman",
+      "breakpoints": true
     }
   ]
 }
