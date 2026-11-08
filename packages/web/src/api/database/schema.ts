@@ -308,6 +308,71 @@ export const rfqRequests = sqliteTable("rfq_requests", {
 });
 
 /**
+ * Conference & event planner — the editable list of things a customer can tick
+ * in the planner. Items live in one of four fixed groups (printed | gifts |
+ * venue | services). An item may point at a real catalog product: its active
+ * variants then supply the (only) prices shown. No product = "requires a quote".
+ */
+export const eventPlanItems = sqliteTable("event_plan_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  /** printed | gifts | venue | services */
+  groupKey: text("group_key").notNull(),
+  nameEn: text("name_en").notNull(),
+  nameAr: text("name_ar").notNull(),
+  descEn: text("desc_en"),
+  descAr: text("desc_ar"),
+  productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
+  /** How the quantity starts: attendees (= expected attendees) | one | none (a service with no quantity). */
+  qtyMode: text("qty_mode").notNull().default("one"),
+  unitEn: text("unit_en"),
+  unitAr: text("unit_ar"),
+  /** JSON: [{ nameEn, nameAr, values: [{ en, ar }] }] — spec choices (size, colour, paper...). Never priced. */
+  specsJson: text("specs_json").notNull().default("[]"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+/** A submitted conference / event planner request. `itemsJson` is a snapshot of what the customer chose, with prices at that time. */
+export const eventPlanRequests = sqliteTable("event_plan_requests", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id").references(() => user.id),
+  /** conference | exhibition | launch | meeting | other */
+  eventType: text("event_type").notNull(),
+  eventName: text("event_name"),
+  /** YYYY-MM-DD */
+  eventDate: text("event_date").notNull(),
+  eventDays: integer("event_days").notNull().default(1),
+  setupDays: integer("setup_days").notNull().default(0),
+  city: text("city").notNull(),
+  venue: text("venue"),
+  attendees: integer("attendees").notNull(),
+  contactName: text("contact_name").notNull(),
+  company: text("company"),
+  /** E.164 */
+  contactPhone: text("contact_phone"),
+  contactEmail: text("contact_email"),
+  notes: text("notes"),
+  lang: text("lang").notNull().default("en"),
+  itemsJson: text("items_json").notNull(),
+  /** Sum of the lines that had a catalog price; null when none did. */
+  estimatedTotalCents: integer("estimated_total_cents"),
+  /** Lines with no catalog price — they still need a quote. */
+  unpricedCount: integer("unpriced_count").notNull().default(0),
+  /** new | in_progress | quoted | closed */
+  status: text("status").notNull().default("new"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date()),
+});
+
+/**
  * Provider-agnostic payment tracking. `provider` is "manual" for the whole
  * v1 (admin confirms bank transfer / cash / pay-on-pickup by hand) — a
  * "madfoatcom" provider plugs in later behind the same table, once Saltus

@@ -8,6 +8,7 @@ import { addresses } from "./routes/marketplace/addresses";
 import { admin } from "./routes/marketplace/admin";
 import { cart } from "./routes/marketplace/cart";
 import { catalog } from "./routes/marketplace/catalog";
+import { eventPlan } from "./routes/marketplace/event-plan";
 import { designs } from "./routes/marketplace/designs";
 import { orders } from "./routes/marketplace/orders";
 import { rfq } from "./routes/marketplace/rfq";
@@ -27,6 +28,7 @@ export const router = {
   cart,
   orders,
   rfq,
+  eventPlan,
   designs,
   addresses,
   uploads,

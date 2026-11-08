@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useSearch } from "wouter";
-import { Search, X, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Link, useSearch } from "wouter";
+import { Search, X, Loader2, ChevronLeft, ChevronRight, CalendarCheck } from "lucide-react";
 import { Seo } from "../components/seo";
 import { Nav } from "../components/nav";
 import { Footer } from "../components/footer";
@@ -103,6 +103,26 @@ export default function MarketplacePage() {
 
       <section className="bg-[#0b1f3a] py-16">
         <div className="mx-auto max-w-7xl px-6">
+          {/* Conference & event planner entry */}
+          <div className="glass-card mb-10 flex flex-col gap-5 rounded-2xl border border-[#FF6B00]/40 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div className="flex items-start gap-4">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#FF6B00]/15 text-[#FF6B00]">
+                <CalendarCheck size={24} />
+              </span>
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#FF6B00]">{t.eventPlanner.cta.eyebrow}</span>
+                <h2 className="font-display mt-1 text-xl font-extrabold text-white">{t.eventPlanner.cta.title}</h2>
+                <p className="mt-1 max-w-xl text-sm leading-relaxed text-[#B9C2D0]">{t.eventPlanner.cta.desc}</p>
+              </div>
+            </div>
+            <Link
+              href="/marketplace/plan"
+              className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#FF6B00] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#FF8A3D]"
+            >
+              {t.eventPlanner.cta.button}
+            </Link>
+          </div>
+
           {/* Search */}
           <form onSubmit={submitSearch} className="flex gap-3">
             <div className="relative flex-1">

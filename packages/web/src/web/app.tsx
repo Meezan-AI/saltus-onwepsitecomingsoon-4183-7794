@@ -20,6 +20,7 @@ const MarketplaceCartPage = lazy(() => import("./pages/marketplace-cart"));
 const MarketplaceCheckoutPage = lazy(() => import("./pages/marketplace-checkout"));
 const MarketplaceCheckoutConfirmationPage = lazy(() => import("./pages/marketplace-checkout-confirmation"));
 const MarketplaceRfqPage = lazy(() => import("./pages/marketplace-rfq"));
+const MarketplacePlanPage = lazy(() => import("./pages/marketplace-plan"));
 const AccountLoginPage = lazy(() => import("./pages/account-login"));
 const AccountRegisterPage = lazy(() => import("./pages/account-register"));
 const AccountOrdersPage = lazy(() => import("./pages/account-orders"));
@@ -33,6 +34,9 @@ const AdminOrdersPage = lazy(() => import("./pages/admin-orders"));
 const AdminOrderDetailPage = lazy(() => import("./pages/admin-order-detail"));
 const AdminRfqsPage = lazy(() => import("./pages/admin-rfqs"));
 const AdminRfqDetailPage = lazy(() => import("./pages/admin-rfq-detail"));
+const AdminEventPlansPage = lazy(() => import("./pages/admin-event-plans"));
+const AdminEventPlanDetailPage = lazy(() => import("./pages/admin-event-plan-detail"));
+const AdminEventPlanItemsPage = lazy(() => import("./pages/admin-event-plan-items"));
 const AdminDesignReviewsPage = lazy(() => import("./pages/admin-design-reviews"));
 const AdminProductsPage = lazy(() => import("./pages/admin-products"));
 const AdminProductDetailPage = lazy(() => import("./pages/admin-product-detail"));
@@ -90,6 +94,7 @@ function App() {
             <Route path="/marketplace/checkout" component={MarketplaceCheckoutPage} />
             <Route path="/marketplace/checkout/confirmation" component={MarketplaceCheckoutConfirmationPage} />
             <Route path="/marketplace/rfq/:productSlug" component={MarketplaceRfqPage} />
+            <Route path="/marketplace/plan" component={MarketplacePlanPage} />
             <Route path="/account/login" component={AccountLoginPage} />
             <Route path="/account/register" component={AccountRegisterPage} />
             <Route path="/account/orders" component={AccountOrdersPage} />
@@ -103,6 +108,9 @@ function App() {
             <Route path="/admin/orders/:id" component={AdminOrderDetailPage} />
             <Route path="/admin/rfqs" component={AdminRfqsPage} />
             <Route path="/admin/rfqs/:id" component={AdminRfqDetailPage} />
+            <Route path="/admin/event-plans" component={AdminEventPlansPage} />
+            <Route path="/admin/event-plans/:id" component={AdminEventPlanDetailPage} />
+            <Route path="/admin/event-plan-items" component={AdminEventPlanItemsPage} />
             <Route path="/admin/design-reviews" component={AdminDesignReviewsPage} />
             <Route path="/admin/products" component={AdminProductsPage} />
             <Route path="/admin/products/:id" component={AdminProductDetailPage} />

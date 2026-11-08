@@ -1,3 +1,4 @@
+import type { EventPlannerCopy } from "./event-planner";
 export type ServiceItem = {
   slug: string;
   title: string;
@@ -591,6 +592,7 @@ export type Content = {
     continueShopping: string;
     notFound: string;
   };
+  eventPlanner: EventPlannerCopy;
   rfqRequest: {
     meta: { title: string; desc: string; keywords: string };
     backToProduct: string;

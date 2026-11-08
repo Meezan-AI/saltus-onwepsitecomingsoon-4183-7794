@@ -6,6 +6,7 @@ import { orders } from "./orders";
 import { products } from "./products";
 import { productOptions } from "./product-options";
 import { rfqs } from "./rfqs";
+import { eventPlanItems, eventPlans } from "./event-plans";
 import { suppliers } from "./suppliers";
 import { roles } from "./roles";
 import { auditLog } from "./audit-log";
@@ -18,6 +19,8 @@ export const admin = {
   categories,
   orders,
   rfqs,
+  eventPlanItems,
+  eventPlans,
   designReviews,
   customers,
   suppliers,

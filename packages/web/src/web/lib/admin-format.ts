@@ -55,6 +55,8 @@ const STATUS_VARIANTS: Record<string, BadgeVariant> = {
   pending: "yellow",
   failed: "red",
   awaiting_confirmation: "yellow",
+  in_progress: "yellow",
+  closed: "neutral",
 };
 
 export function statusVariant(status: string): BadgeVariant {

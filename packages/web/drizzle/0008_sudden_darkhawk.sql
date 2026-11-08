@@ -1,0 +1,43 @@
+CREATE TABLE `event_plan_items` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`group_key` text NOT NULL,
+	`name_en` text NOT NULL,
+	`name_ar` text NOT NULL,
+	`desc_en` text,
+	`desc_ar` text,
+	`product_id` integer,
+	`qty_mode` text DEFAULT 'one' NOT NULL,
+	`unit_en` text,
+	`unit_ar` text,
+	`specs_json` text DEFAULT '[]' NOT NULL,
+	`sort_order` integer DEFAULT 0 NOT NULL,
+	`is_active` integer DEFAULT true NOT NULL,
+	`created_at` integer NOT NULL,
+	FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON UPDATE no action ON DELETE set null
+);
+--> statement-breakpoint
+CREATE TABLE `event_plan_requests` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`user_id` text,
+	`event_type` text NOT NULL,
+	`event_name` text,
+	`event_date` text NOT NULL,
+	`event_days` integer DEFAULT 1 NOT NULL,
+	`setup_days` integer DEFAULT 0 NOT NULL,
+	`city` text NOT NULL,
+	`venue` text,
+	`attendees` integer NOT NULL,
+	`contact_name` text NOT NULL,
+	`company` text,
+	`contact_phone` text,
+	`contact_email` text,
+	`notes` text,
+	`lang` text DEFAULT 'en' NOT NULL,
+	`items_json` text NOT NULL,
+	`estimated_total_cents` integer,
+	`unpriced_count` integer DEFAULT 0 NOT NULL,
+	`status` text DEFAULT 'new' NOT NULL,
+	`created_at` integer NOT NULL,
+	`updated_at` integer NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE no action
+);

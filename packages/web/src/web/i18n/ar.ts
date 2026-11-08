@@ -1,3 +1,4 @@
+import { eventPlannerAr } from "./event-planner";
 import { insightsAr } from "./insights-ar";
 import type { Content } from "./types";
 
@@ -1167,6 +1168,7 @@ export const ar: Content = {
     continueShopping: "متابعة التسوق",
     notFound: "تعذّر العثور على هذا الطلب.",
   },
+  eventPlanner: eventPlannerAr,
   rfqRequest: {
     meta: {
       title: "طلب عرض سعر | متجر سالتوس ONE",

@@ -1,3 +1,4 @@
+import { eventPlannerEn } from "./event-planner";
 import { insightsEn } from "./insights-en";
 import type { Content } from "./types";
 
@@ -1175,6 +1176,7 @@ export const en: Content = {
     continueShopping: "Continue Shopping",
     notFound: "We couldn't find that order.",
   },
+  eventPlanner: eventPlannerEn,
   rfqRequest: {
     meta: {
       title: "Request a Quote | Saltus ONE Marketplace",
