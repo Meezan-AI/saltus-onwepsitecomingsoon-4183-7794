@@ -391,6 +391,15 @@ export const quotes = sqliteTable("quotes", {
   /** Whole-number percent added on top of the discounted subtotal; 0 prints no VAT row. */
   vatPercent: integer("vat_percent").notNull().default(0),
   notes: text("notes"),
+  /** The Saltus ONE team member who issued the quote — printed on the document. */
+  preparedByName: text("prepared_by_name"),
+  preparedByPhone: text("prepared_by_phone"),
+  /** Unguessable id for the customer-facing link /q/:token. */
+  shareToken: text("share_token").unique(),
+  lastSentAt: integer("last_sent_at", { mode: "timestamp" }),
+  /** email | whatsapp */
+  lastSentVia: text("last_sent_via"),
+  lastSentTo: text("last_sent_to"),
   createdBy: text("created_by").references(() => user.id),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()

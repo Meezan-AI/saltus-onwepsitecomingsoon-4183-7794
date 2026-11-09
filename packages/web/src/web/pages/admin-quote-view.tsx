@@ -1,7 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
-import { Copy, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Copy, Loader2, Pencil, Send, Trash2 } from "lucide-react";
 import { AdminProtectedRoute } from "../components/admin/admin-protected-route";
+import { QuoteSendDialog } from "../components/quote-send-dialog";
+import { quoteFolderKey } from "../lib/quote-folders";
 import { QuoteDocument } from "../components/quote-document";
 import { useAdminQuote, useRemoveQuote } from "../queries/admin-quotes";
 
@@ -12,6 +14,7 @@ function QuoteViewContent({ id }: { id: number }) {
   const quote = useAdminQuote(id);
   const remove = useRemoveQuote();
   const [, navigate] = useLocation();
+  const [sendOpen, setSendOpen] = useState(false);
 
   if (quote.isPending) {
     return (
@@ -30,19 +33,22 @@ function QuoteViewContent({ id }: { id: number }) {
   }
 
   const q = quote.data;
+  const folderHref = `/admin/quotes?c=${encodeURIComponent(quoteFolderKey(q))}`;
   async function onDelete() {
     if (!window.confirm(`Delete ${q.reference}? This cannot be undone.`)) return;
     await remove.mutateAsync({ id: q.id });
-    navigate("/admin/quotes");
+    navigate(folderHref);
   }
 
   return (
+    <>
     <QuoteDocument
       reference={q.reference}
       issued={new Date(`${q.issueDate}T12:00:00`)}
       client={{ name: q.customerName, company: q.company, phone: q.phone, email: q.email }}
+      preparedBy={{ name: q.preparedByName, phone: q.preparedByPhone }}
       aside={q.subject ? { heading: "Subject", title: q.subject, rows: [] } : undefined}
-      groups={[{ lines: q.lines.map((l) => ({ name: l.description, details: l.details, qty: l.qty, unitCents: l.unitCents, totalCents: l.qty * l.unitCents })) }]}
+      groups={[{ lines: q.lines.map((l) => ({ name: l.description, details: l.details, qty: l.qty, unitCents: l.unitCents, totalCents: l.qty * l.unitCents, kind: l.kind, period: l.period })) }]}
       totals={{
         label: "Total",
         subtotalCents: q.subtotalCents,
@@ -53,10 +59,17 @@ function QuoteViewContent({ id }: { id: number }) {
       }}
       notes={q.notes}
       notesLabel="Notes"
-      backHref="/admin/quotes"
-      backLabel="All quotes"
+      backHref={folderHref}
+      backLabel="Client folder"
       actions={
         <>
+          <button
+            type="button"
+            onClick={() => setSendOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#0b1f3a] px-4 py-2 text-sm font-semibold text-white hover:bg-[#12315a]"
+          >
+            <Send size={14} /> Send
+          </button>
           <Link href={`/admin/quotes/${q.id}/edit`} className={actionClass}>
             <Pencil size={14} /> Edit
           </Link>
@@ -69,6 +82,8 @@ function QuoteViewContent({ id }: { id: number }) {
         </>
       }
     />
+    <QuoteSendDialog quote={q} open={sendOpen} onOpenChange={setSendOpen} />
+    </>
   );
 }
 

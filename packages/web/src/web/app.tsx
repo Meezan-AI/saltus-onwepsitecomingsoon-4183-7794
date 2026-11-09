@@ -34,6 +34,7 @@ const AdminOrdersPage = lazy(() => import("./pages/admin-orders"));
 const AdminOrderDetailPage = lazy(() => import("./pages/admin-order-detail"));
 const AdminRfqsPage = lazy(() => import("./pages/admin-rfqs"));
 const AdminRfqDetailPage = lazy(() => import("./pages/admin-rfq-detail"));
+const QuotePublicPage = lazy(() => import("./pages/quote-public"));
 const AdminQuotesPage = lazy(() => import("./pages/admin-quotes"));
 const AdminQuoteFormPage = lazy(() => import("./pages/admin-quote-form"));
 const AdminQuoteViewPage = lazy(() => import("./pages/admin-quote-view"));
@@ -99,6 +100,7 @@ function App() {
             <Route path="/marketplace/checkout/confirmation" component={MarketplaceCheckoutConfirmationPage} />
             <Route path="/marketplace/rfq/:productSlug" component={MarketplaceRfqPage} />
             <Route path="/marketplace/plan" component={MarketplacePlanPage} />
+            <Route path="/q/:token" component={QuotePublicPage} />
             <Route path="/account/login" component={AccountLoginPage} />
             <Route path="/account/register" component={AccountRegisterPage} />
             <Route path="/account/orders" component={AccountOrdersPage} />

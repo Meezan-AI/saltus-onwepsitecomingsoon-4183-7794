@@ -28,6 +28,9 @@ export interface QuoteDocLine {
   qty: number;
   unitCents: number | null;
   totalCents: number | null;
+  /** Sale or rental; omitted for event-plan lines. */
+  kind?: "sale" | "rent";
+  period?: string;
 }
 export interface QuoteDocGroup {
   label?: string;
@@ -39,6 +42,8 @@ export interface QuoteDocProps {
   client: { name: string; company?: string | null; phone?: string | null; email?: string | null };
   /** The right-hand block under the header (event details, or the project / subject). */
   aside?: { heading: string; title?: string; rows: string[] };
+  /** The Saltus ONE team member who issued the quote. */
+  preparedBy?: { name?: string | null; phone?: string | null };
   groups: QuoteDocGroup[];
   totals: {
     label: string;
@@ -51,8 +56,9 @@ export interface QuoteDocProps {
   };
   notes?: string | null;
   notesLabel: string;
-  backHref: string;
-  backLabel: string;
+  /** Omit on the customer-facing page. */
+  backHref?: string;
+  backLabel?: string;
   /** Extra buttons next to Print (e.g. Edit). */
   actions?: ReactNode;
 }
@@ -74,9 +80,13 @@ export function QuoteDocument(p: QuoteDocProps) {
       `}</style>
 
       <div className="mx-auto mb-4 flex max-w-[210mm] items-center justify-between gap-3 px-3 print:hidden">
-        <Link href={p.backHref} className="inline-flex items-center gap-2 text-sm font-medium text-neutral-700 hover:text-black">
-          <ArrowLeft size={16} /> {p.backLabel}
-        </Link>
+        {p.backHref ? (
+          <Link href={p.backHref} className="inline-flex items-center gap-2 text-sm font-medium text-neutral-700 hover:text-black">
+            <ArrowLeft size={16} /> {p.backLabel}
+          </Link>
+        ) : (
+          <span />
+        )}
         <div className="flex items-center gap-2">
           {p.actions}
           <button
@@ -108,6 +118,14 @@ export function QuoteDocument(p: QuoteDocProps) {
             {p.client.phone && <p className="text-sm text-neutral-700" dir="ltr">{p.client.phone}</p>}
             {p.client.email && <p className="text-sm text-neutral-700">{p.client.email}</p>}
           </div>
+          {p.preparedBy && (p.preparedBy.name || p.preparedBy.phone) && (
+            <div>
+              <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-[#FF6B00]">Prepared by</h2>
+              <p className="mt-2 text-base font-semibold">{p.preparedBy.name}</p>
+              <p className="text-sm text-neutral-700">Saltus ONE</p>
+              {p.preparedBy.phone && <p className="text-sm text-neutral-700" dir="ltr">{p.preparedBy.phone}</p>}
+            </div>
+          )}
           {p.aside && (
             <div>
               <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-[#FF6B00]">{p.aside.heading}</h2>
@@ -223,7 +241,18 @@ function GroupRows({ group, offset }: { group: QuoteDocGroup; offset: number }) 
         <tr key={i} className="qt-avoid border-b border-neutral-200 align-top">
           <td className="whitespace-nowrap px-3 py-2 text-neutral-500">{offset + i + 1}</td>
           <td className="px-3 py-2">
-            <p className="font-medium">{l.name}</p>
+            <p className="font-medium">
+              {l.name}
+              {l.kind && (
+                <span
+                  className={`ml-2 inline-block rounded px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide ${
+                    l.kind === "rent" ? "bg-[#0b1f3a] text-white" : "bg-neutral-200 text-neutral-700"
+                  }`}
+                >
+                  {l.kind === "rent" ? `Rental${l.period ? ` · ${l.period}` : ""}` : "Sale"}
+                </span>
+              )}
+            </p>
             {l.details && <p className="whitespace-pre-wrap text-xs text-neutral-600">{l.details}</p>}
             {l.note && <p className="text-xs italic text-neutral-500">{l.note}</p>}
           </td>

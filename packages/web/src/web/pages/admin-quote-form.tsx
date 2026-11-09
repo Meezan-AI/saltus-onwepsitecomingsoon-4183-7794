@@ -8,6 +8,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { useAdminQuote, useCreateQuote, useUpdateQuote } from "../queries/admin-quotes";
+import { useMe } from "../queries/account";
 import { formatCents } from "../lib/admin-format";
 
 interface LineDraft {
@@ -15,9 +16,22 @@ interface LineDraft {
   details: string;
   qty: string;
   unit: string; // JOD, e.g. "12.500"
+  kind: "sale" | "rent";
+  period: string;
 }
 
-const emptyLine = (): LineDraft => ({ description: "", details: "", qty: "1", unit: "" });
+const emptyLine = (): LineDraft => ({ description: "", details: "", qty: "1", unit: "", kind: "sale", period: "" });
+const ISSUER_KEY = "saltus-quote-issuer";
+
+/** The last person who issued a quote on this browser, so staff don't retype their name and phone. */
+function savedIssuer(): { name: string; phone: string } {
+  try {
+    const v = JSON.parse(localStorage.getItem(ISSUER_KEY) ?? "{}");
+    return { name: typeof v.name === "string" ? v.name : "", phone: typeof v.phone === "string" ? v.phone : "" };
+  } catch {
+    return { name: "", phone: "" };
+  }
+}
 const today = () => new Date().toISOString().slice(0, 10);
 
 /** "12.5" → 12500 fils. Returns null for anything that is not a non-negative number. */
@@ -38,15 +52,22 @@ interface Draft {
   discount: string;
   vatPercent: string;
   notes: string;
+  preparedByName: string;
+  preparedByPhone: string;
 }
 
-const blank = (): Draft => ({
-  customerName: "", company: "", phone: "", email: "", subject: "", issueDate: today(),
-  lines: [emptyLine()], discount: "", vatPercent: "0", notes: "",
-});
+const blank = (): Draft => {
+  const issuer = savedIssuer();
+  return {
+    customerName: "", company: "", phone: "", email: "", subject: "", issueDate: today(),
+    lines: [emptyLine()], discount: "", vatPercent: "0", notes: "",
+    preparedByName: issuer.name, preparedByPhone: issuer.phone,
+  };
+};
 
-function FormContent({ editId, fromId }: { editId?: number; fromId?: number }) {
-  const sourceId = editId ?? fromId;
+function FormContent({ editId, fromId, clientOfId }: { editId?: number; fromId?: number; clientOfId?: number }) {
+  const sourceId = editId ?? fromId ?? clientOfId;
+  const me = useMe();
   const source = useAdminQuote(sourceId);
   const create = useCreateQuote();
   const update = useUpdateQuote();
@@ -60,20 +81,33 @@ function FormContent({ editId, fromId }: { editId?: number; fromId?: number }) {
   useEffect(() => {
     if (!sourceId || loaded || !source.data) return;
     const q = source.data;
-    setD({
-      customerName: q.customerName,
-      company: q.company ?? "",
-      phone: q.phone ?? "",
-      email: q.email ?? "",
-      subject: q.subject ?? "",
-      issueDate: editId ? q.issueDate : today(),
-      lines: q.lines.map((l) => ({ description: l.description, details: l.details, qty: String(l.qty), unit: (l.unitCents / 1000).toFixed(3) })),
-      discount: q.discountCents ? (q.discountCents / 1000).toFixed(3) : "",
-      vatPercent: String(q.vatPercent),
-      notes: q.notes ?? "",
-    });
+    const issuer = savedIssuer();
+    const client = { customerName: q.customerName, company: q.company ?? "", phone: q.phone ?? "", email: q.email ?? "" };
+    if (clientOfId) {
+      // "New quote for this client": keep the client, start with empty items.
+      setD((p) => ({ ...p, ...client }));
+    } else {
+      setD({
+        ...client,
+        subject: q.subject ?? "",
+        issueDate: editId ? q.issueDate : today(),
+        lines: q.lines.map((l) => ({ description: l.description, details: l.details, qty: String(l.qty), unit: (l.unitCents / 1000).toFixed(3), kind: l.kind, period: l.period })),
+        discount: q.discountCents ? (q.discountCents / 1000).toFixed(3) : "",
+        vatPercent: String(q.vatPercent),
+        notes: q.notes ?? "",
+        // A duplicate is issued by whoever is making it now; an edit keeps the original issuer.
+        preparedByName: editId ? (q.preparedByName ?? "") : issuer.name || (q.preparedByName ?? ""),
+        preparedByPhone: editId ? (q.preparedByPhone ?? "") : issuer.phone || (q.preparedByPhone ?? ""),
+      });
+    }
     setLoaded(true);
-  }, [sourceId, editId, loaded, source.data]);
+  }, [sourceId, editId, clientOfId, loaded, source.data]);
+
+  // New quote with no remembered issuer: suggest the signed-in user's name.
+  useEffect(() => {
+    const name = me.data?.name;
+    if (!editId && name) setD((p) => (p.preparedByName ? p : { ...p, preparedByName: name }));
+  }, [me.data?.name, editId]);
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((p) => ({ ...p, [k]: v }));
   const setLine = (i: number, patch: Partial<LineDraft>) => setD((p) => ({ ...p, lines: p.lines.map((l, j) => (j === i ? { ...l, ...patch } : l)) }));
@@ -93,11 +127,13 @@ function FormContent({ editId, fromId }: { editId?: number; fromId?: number }) {
   const nameMissing = d.customerName.trim() === "";
   const noLines = !parsedLines.some((l) => l.ok);
   const emailBad = d.email.trim() !== "" && !/^\S+@\S+\.\S+$/.test(d.email.trim());
+  const issuerNameMissing = d.preparedByName.trim() === "";
+  const issuerPhoneMissing = d.preparedByPhone.trim().length < 5;
   const invalidClass = (bad: boolean) => (showErrors && bad ? "border-red-400 bg-red-500/10" : "");
 
   async function save() {
     setServerError("");
-    if (nameMissing || noLines || emailBad || parsedLines.some((l, i) => !l.ok && (d.lines[i].description.trim() || d.lines[i].unit.trim()))) {
+    if (nameMissing || noLines || emailBad || issuerNameMissing || issuerPhoneMissing || parsedLines.some((l, i) => !l.ok && (d.lines[i].description.trim() || d.lines[i].unit.trim()))) {
       setShowErrors(true);
       return;
     }
@@ -111,12 +147,15 @@ function FormContent({ editId, fromId }: { editId?: number; fromId?: number }) {
       lines: d.lines
         .map((l, i) => ({ l, p: parsedLines[i] }))
         .filter(({ p }) => p.ok)
-        .map(({ l, p }) => ({ description: l.description.trim(), details: l.details.trim(), qty: p.qty, unitCents: p.unit })),
+        .map(({ l, p }) => ({ description: l.description.trim(), details: l.details.trim(), qty: p.qty, unitCents: p.unit, kind: l.kind, period: l.kind === "rent" ? l.period.trim() : "" })),
       discountCents: totals.discount,
       vatPercent: Number(d.vatPercent) || 0,
       notes: d.notes.trim(),
+      preparedByName: d.preparedByName.trim(),
+      preparedByPhone: d.preparedByPhone.trim(),
     };
     try {
+      localStorage.setItem(ISSUER_KEY, JSON.stringify({ name: payload.preparedByName, phone: payload.preparedByPhone }));
       const saved = editId ? await update.mutateAsync({ id: editId, ...payload }) : await create.mutateAsync(payload);
       navigate(`/admin/quotes/${saved.id}`);
     } catch (e) {
@@ -129,6 +168,25 @@ function FormContent({ editId, fromId }: { editId?: number; fromId?: number }) {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Issued by (Saltus ONE)</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label>Your name *</Label>
+            <Input value={d.preparedByName} onChange={(e) => set("preparedByName", e.target.value)} className={invalidClass(issuerNameMissing)} />
+            {showErrors && issuerNameMissing && <p className="mt-1 text-xs text-red-300">Required</p>}
+          </div>
+          <div>
+            <Label>Your phone *</Label>
+            <Input value={d.preparedByPhone} onChange={(e) => set("preparedByPhone", e.target.value)} dir="ltr" placeholder="+962 7X XXX XXXX" className={invalidClass(issuerPhoneMissing)} />
+            {showErrors && issuerPhoneMissing && <p className="mt-1 text-xs text-red-300">Required</p>}
+          </div>
+          <p className="text-xs text-white/40 sm:col-span-2">Printed on the quote as “Prepared by”. Remembered on this browser for your next quote.</p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Client</CardTitle>
@@ -204,9 +262,32 @@ function FormContent({ editId, fromId }: { editId?: number; fromId?: number }) {
                     </button>
                   </div>
                 </div>
-                <div className="mt-3">
-                  <Label>Details (optional)</Label>
-                  <Input value={l.details} onChange={(e) => setLine(i, { details: e.target.value })} placeholder="Size, paper, finishing…" />
+                <div className="mt-3 grid gap-3 sm:grid-cols-[170px_1fr_1fr]">
+                  <div>
+                    <Label>Sale or rental</Label>
+                    <select
+                      value={l.kind}
+                      onChange={(e) => setLine(i, { kind: e.target.value as "sale" | "rent" })}
+                      className="h-10 w-full rounded-lg border border-white/15 bg-[#0b1f3a] px-3 text-sm text-white outline-none focus:border-[#FF6B00]"
+                    >
+                      <option value="sale">Sale</option>
+                      <option value="rent">Rental</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label>{l.kind === "rent" ? "Rental period" : "Details (optional)"}</Label>
+                    {l.kind === "rent" ? (
+                      <Input value={l.period} onChange={(e) => setLine(i, { period: e.target.value })} placeholder="e.g. 3 days" />
+                    ) : (
+                      <Input value={l.details} onChange={(e) => setLine(i, { details: e.target.value })} placeholder="Size, paper, finishing…" />
+                    )}
+                  </div>
+                  <div>
+                    <Label>{l.kind === "rent" ? "Details (optional)" : " "}</Label>
+                    {l.kind === "rent" ? (
+                      <Input value={l.details} onChange={(e) => setLine(i, { details: e.target.value })} placeholder="Size, setup, finishing…" />
+                    ) : null}
+                  </div>
                 </div>
                 {bad && <p className="mt-2 text-xs text-red-300">Add a description, a whole-number quantity and a price.</p>}
               </div>
@@ -258,7 +339,7 @@ function FormContent({ editId, fromId }: { editId?: number; fromId?: number }) {
       </Card>
 
       {serverError && <p className="text-sm text-red-300">{serverError}</p>}
-      {showErrors && (nameMissing || noLines || emailBad) && <p className="text-sm text-red-300">Please fix the highlighted fields.</p>}
+      {showErrors && (nameMissing || noLines || emailBad || issuerNameMissing || issuerPhoneMissing) && <p className="text-sm text-red-300">Please fix the highlighted fields.</p>}
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -281,13 +362,15 @@ export default function AdminQuoteFormPage() {
   const editId = params.id ? Number(params.id) : undefined;
   const fromParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("from") : null;
   const fromId = !editId && fromParam ? Number(fromParam) || undefined : undefined;
+  const clientParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("clientOf") : null;
+  const clientOfId = !editId && !fromId && clientParam ? Number(clientParam) || undefined : undefined;
   useEffect(() => {
     document.title = `${editId ? "Edit quote" : "New quote"} — Admin — Saltus ONE`;
   }, [editId]);
   return (
     <AdminProtectedRoute>
       <AdminLayout title={editId ? "Edit quote" : "New quote"}>
-        <FormContent key={`${editId ?? "new"}-${fromId ?? ""}`} editId={editId} fromId={fromId} />
+        <FormContent key={`${editId ?? "new"}-${fromId ?? ""}-${clientOfId ?? ""}`} editId={editId} fromId={fromId} clientOfId={clientOfId} />
       </AdminLayout>
     </AdminProtectedRoute>
   );

@@ -28,3 +28,17 @@ export function useRemoveQuote() {
   const invalidate = useInvalidate();
   return useMutation(orpc.admin.quotes.remove.mutationOptions({ onSuccess: invalidate }));
 }
+
+export function useMarkQuoteSent() {
+  const invalidate = useInvalidate();
+  return useMutation(orpc.admin.quotes.markSent.mutationOptions({ onSuccess: invalidate }));
+}
+
+export function useSendQuoteEmail() {
+  const invalidate = useInvalidate();
+  return useMutation(orpc.admin.quotes.sendEmail.mutationOptions({ onSuccess: invalidate }));
+}
+
+export function usePublicQuote(token: string) {
+  return useQuery(orpc.publicQuote.get.queryOptions({ input: { token }, retry: false }));
+}
