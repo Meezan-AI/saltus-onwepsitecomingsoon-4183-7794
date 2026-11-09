@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { useParams } from "wouter";
-import { Loader2, Mail, MessageCircle } from "lucide-react";
+import { Link, useParams } from "wouter";
+import { FileText, Loader2, Mail, MessageCircle } from "lucide-react";
 import { AdminLayout } from "../components/admin/admin-layout";
 import { AdminProtectedRoute } from "../components/admin/admin-protected-route";
 import { Badge } from "../components/ui/badge";
@@ -123,6 +123,13 @@ function PlanContent({ id }: { id: number }) {
         </div>
 
         <div className="space-y-6">
+          <Link
+            href={`/admin/event-plans/${r.id}/quote`}
+            className="flex items-center justify-center gap-2 rounded-full bg-[#FF6B00] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#FF8A3D]"
+          >
+            <FileText size={16} /> Open quote document (PDF)
+          </Link>
+
           <Card>
             <CardHeader>
               <CardTitle>Contact</CardTitle>

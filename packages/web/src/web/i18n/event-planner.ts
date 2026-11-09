@@ -31,6 +31,7 @@ export interface EventPlannerCopy {
     venuePlaceholder: string;
     attendeesLabel: string;
     missing: string;
+    fieldRequired: string;
   };
   groups: Record<"printed" | "gifts" | "venue" | "services", { title: string; desc: string }>;
   item: {
@@ -153,7 +154,8 @@ export const eventPlannerEn: EventPlannerCopy = {
     venueLabel: "Hotel or venue (optional)",
     venuePlaceholder: "e.g. Dead Sea Convention Center",
     attendeesLabel: "Expected attendees",
-    missing: "Please fill in the event type, date, city and attendees.",
+    missing: "Please complete the highlighted fields (marked *) to continue.",
+    fieldRequired: "Required",
   },
   groups: {
     printed: { title: "Conference printing", desc: "Programmes, badges, certificates, tickets and signs." },
@@ -281,7 +283,8 @@ export const eventPlannerAr: EventPlannerCopy = {
     venueLabel: "الفندق أو موقع الفعالية (اختياري)",
     venuePlaceholder: "مثال: مركز الملك حسين بن طلال للمؤتمرات",
     attendeesLabel: "عدد الحضور المتوقع",
-    missing: "الرجاء إدخال نوع الفعالية وتاريخها والمدينة وعدد الحضور.",
+    missing: "الرجاء تعبئة الحقول المظلّلة بالأحمر (المعلّمة بـ *) للمتابعة.",
+    fieldRequired: "مطلوب",
   },
   groups: {
     printed: { title: "مطبوعات المؤتمر", desc: "البرامج والباجات والشهادات والتذاكر واللوحات الإرشادية." },

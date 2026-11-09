@@ -61,6 +61,7 @@ export default function MarketplacePlanPage() {
   const [notes, setNotes] = useState("");
   const [website, setWebsite] = useState(""); // honeypot
   const [error, setError] = useState<string | null>(null);
+  const [showMissing, setShowMissing] = useState(false);
   const [done, setDone] = useState<{ reference: string } | null>(null);
 
   const accountEmail = session?.user?.email ?? "";
@@ -87,8 +88,23 @@ export default function MarketplacePlanPage() {
     return Boolean(eventType && eventDate && city.trim() && attendees >= 1 && eventDays >= 1);
   }
 
+  // Once the missing fields are filled, drop the warning so it doesn't linger.
+  useEffect(() => {
+    if (step === 0 && showMissing && eventType && eventDate && city.trim() && attendees >= 1) {
+      setError(null);
+      setShowMissing(false);
+    }
+  }, [step, showMissing, eventType, eventDate, city, attendees]);
+
   function next() {
-    if (step === 0 && !eventValid()) return setError(p.event.missing);
+    if (step === 0 && !eventValid()) {
+      setShowMissing(true);
+      setError(p.event.missing);
+      requestAnimationFrame(() =>
+        document.querySelector("[data-missing='true']")?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      );
+      return;
+    }
     if (step === 5 && lines.length === 0) return setError(p.review.needItems);
     go(Math.min(LAST, step + 1));
   }
@@ -158,6 +174,12 @@ export default function MarketplacePlanPage() {
       setError(p.contact.error);
     }
   }
+
+  const miss = (bad: boolean) => showMissing && bad;
+  const invalidClass = "!border-red-400/70";
+  const reqMark = <span className="text-[#FF6B00]"> *</span>;
+  const reqText = (bad: boolean) =>
+    miss(bad) ? <span className="mt-1 block text-[11px] font-medium text-red-300">{p.event.fieldRequired}</span> : null;
 
   const BackIcon = dir === "rtl" ? ArrowRight : ArrowLeft;
   const NextIcon = dir === "rtl" ? ArrowLeft : ArrowRight;
@@ -268,8 +290,8 @@ export default function MarketplacePlanPage() {
           <p className="mt-1 text-sm text-[#B9C2D0]">{p.event.desc}</p>
         </div>
         <div>
-          <span className={labelClass}>{p.event.typeLabel}</span>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <span className={labelClass}>{p.event.typeLabel}{reqMark}</span>
+          <div data-missing={miss(!eventType)} className={`mt-2 flex flex-wrap gap-2 rounded-2xl ${miss(!eventType) ? "border border-red-400/70 p-2" : ""}`}>
             {EVENT_TYPES.map((k) => (
               <button
                 key={k}
@@ -284,6 +306,7 @@ export default function MarketplacePlanPage() {
               </button>
             ))}
           </div>
+          {reqText(!eventType)}
         </div>
         <label className="block">
           <span className={labelClass}>{p.event.nameLabel}</span>
@@ -291,11 +314,12 @@ export default function MarketplacePlanPage() {
         </label>
         <div className="grid gap-5 sm:grid-cols-2">
           <label className="block">
-            <span className={labelClass}>{p.event.dateLabel}</span>
-            <input type="date" dir="ltr" className={`${inputClass} mt-1.5 text-start`} value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
+            <span className={labelClass}>{p.event.dateLabel}{reqMark}</span>
+            <input type="date" dir="ltr" data-missing={miss(!eventDate)} className={`${inputClass} mt-1.5 text-start ${miss(!eventDate) ? invalidClass : ""}`} value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
+            {reqText(!eventDate)}
           </label>
           <label className="block">
-            <span className={labelClass}>{p.event.attendeesLabel}</span>
+            <span className={labelClass}>{p.event.attendeesLabel}{reqMark}</span>
             <input type="number" inputMode="numeric" min={1} className={`${inputClass} mt-1.5`} value={attendees} onChange={(e) => setAttendees(clampInt(e.target.value, 1, 1_000_000))} />
           </label>
           <label className="block">
@@ -309,8 +333,9 @@ export default function MarketplacePlanPage() {
             <span className="mt-1 block text-[11px] text-white/40">{p.event.setupHint}</span>
           </label>
           <label className="block">
-            <span className={labelClass}>{p.event.cityLabel}</span>
-            <input className={`${inputClass} mt-1.5`} value={city} maxLength={80} placeholder={p.event.cityPlaceholder} onChange={(e) => setCity(e.target.value)} />
+            <span className={labelClass}>{p.event.cityLabel}{reqMark}</span>
+            <input data-missing={miss(!city.trim())} className={`${inputClass} mt-1.5 ${miss(!city.trim()) ? invalidClass : ""}`} value={city} maxLength={80} placeholder={p.event.cityPlaceholder} onChange={(e) => setCity(e.target.value)} />
+            {reqText(!city.trim())}
           </label>
           <label className="block">
             <span className={labelClass}>{p.event.venueLabel}</span>

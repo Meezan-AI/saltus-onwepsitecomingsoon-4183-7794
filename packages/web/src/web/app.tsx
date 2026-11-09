@@ -36,6 +36,7 @@ const AdminRfqsPage = lazy(() => import("./pages/admin-rfqs"));
 const AdminRfqDetailPage = lazy(() => import("./pages/admin-rfq-detail"));
 const AdminEventPlansPage = lazy(() => import("./pages/admin-event-plans"));
 const AdminEventPlanDetailPage = lazy(() => import("./pages/admin-event-plan-detail"));
+const AdminEventPlanQuotePage = lazy(() => import("./pages/admin-event-plan-quote"));
 const AdminEventPlanItemsPage = lazy(() => import("./pages/admin-event-plan-items"));
 const AdminDesignReviewsPage = lazy(() => import("./pages/admin-design-reviews"));
 const AdminProductsPage = lazy(() => import("./pages/admin-products"));
@@ -110,6 +111,7 @@ function App() {
             <Route path="/admin/rfqs/:id" component={AdminRfqDetailPage} />
             <Route path="/admin/event-plans" component={AdminEventPlansPage} />
             <Route path="/admin/event-plans/:id" component={AdminEventPlanDetailPage} />
+            <Route path="/admin/event-plans/:id/quote" component={AdminEventPlanQuotePage} />
             <Route path="/admin/event-plan-items" component={AdminEventPlanItemsPage} />
             <Route path="/admin/design-reviews" component={AdminDesignReviewsPage} />
             <Route path="/admin/products" component={AdminProductsPage} />
