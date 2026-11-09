@@ -179,7 +179,7 @@ export const quotes = {
           ],
         },
         cta: { label: ar ? "عرض عرض السعر" : "View quotation", url: quoteShareUrl(token) },
-        signature: ["Saltus ONE"],
+        signature: ar ? ["مسارات سالتوس لإدارة المعارض والفعاليات", "Saltus ONE"] : ["Saltus Pathways for Exhibitions and Events Management", "Saltus ONE"],
       });
       const result = await sendEmail({
         to: input.to,
