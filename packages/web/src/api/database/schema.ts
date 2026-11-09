@@ -373,6 +373,35 @@ export const eventPlanRequests = sqliteTable("event_plan_requests", {
 });
 
 /**
+ * A quotation ("Request a Quote" document) the team writes by hand — for a phone/WhatsApp customer or a
+ * returning client who never used the planner. `linesJson` holds free-form lines; money is in fils (1000/dinar).
+ */
+export const quotes = sqliteTable("quotes", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  customerName: text("customer_name").notNull(),
+  company: text("company"),
+  phone: text("phone"),
+  email: text("email"),
+  /** Optional project / subject line printed under the client block. */
+  subject: text("subject"),
+  /** YYYY-MM-DD — the date printed on the document; the quote is valid 30 days from it. */
+  issueDate: text("issue_date").notNull(),
+  linesJson: text("lines_json").notNull(),
+  discountCents: integer("discount_cents").notNull().default(0),
+  /** Whole-number percent added on top of the discounted subtotal; 0 prints no VAT row. */
+  vatPercent: integer("vat_percent").notNull().default(0),
+  notes: text("notes"),
+  createdBy: text("created_by").references(() => user.id),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date()),
+});
+
+/**
  * Provider-agnostic payment tracking. `provider` is "manual" for the whole
  * v1 (admin confirms bank transfer / cash / pay-on-pickup by hand) — a
  * "madfoatcom" provider plugs in later behind the same table, once Saltus

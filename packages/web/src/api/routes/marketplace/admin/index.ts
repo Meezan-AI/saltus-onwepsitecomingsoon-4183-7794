@@ -7,6 +7,7 @@ import { products } from "./products";
 import { productOptions } from "./product-options";
 import { rfqs } from "./rfqs";
 import { eventPlanItems, eventPlans } from "./event-plans";
+import { quotes } from "./quotes";
 import { suppliers } from "./suppliers";
 import { roles } from "./roles";
 import { auditLog } from "./audit-log";
@@ -21,6 +22,7 @@ export const admin = {
   rfqs,
   eventPlanItems,
   eventPlans,
+  quotes,
   designReviews,
   customers,
   suppliers,

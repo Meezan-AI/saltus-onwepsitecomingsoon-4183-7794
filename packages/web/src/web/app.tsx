@@ -34,6 +34,9 @@ const AdminOrdersPage = lazy(() => import("./pages/admin-orders"));
 const AdminOrderDetailPage = lazy(() => import("./pages/admin-order-detail"));
 const AdminRfqsPage = lazy(() => import("./pages/admin-rfqs"));
 const AdminRfqDetailPage = lazy(() => import("./pages/admin-rfq-detail"));
+const AdminQuotesPage = lazy(() => import("./pages/admin-quotes"));
+const AdminQuoteFormPage = lazy(() => import("./pages/admin-quote-form"));
+const AdminQuoteViewPage = lazy(() => import("./pages/admin-quote-view"));
 const AdminEventPlansPage = lazy(() => import("./pages/admin-event-plans"));
 const AdminEventPlanDetailPage = lazy(() => import("./pages/admin-event-plan-detail"));
 const AdminEventPlanQuotePage = lazy(() => import("./pages/admin-event-plan-quote"));
@@ -112,6 +115,10 @@ function App() {
             <Route path="/admin/event-plans" component={AdminEventPlansPage} />
             <Route path="/admin/event-plans/:id" component={AdminEventPlanDetailPage} />
             <Route path="/admin/event-plans/:id/quote" component={AdminEventPlanQuotePage} />
+            <Route path="/admin/quotes" component={AdminQuotesPage} />
+            <Route path="/admin/quotes/new" component={AdminQuoteFormPage} />
+            <Route path="/admin/quotes/:id/edit" component={AdminQuoteFormPage} />
+            <Route path="/admin/quotes/:id" component={AdminQuoteViewPage} />
             <Route path="/admin/event-plan-items" component={AdminEventPlanItemsPage} />
             <Route path="/admin/design-reviews" component={AdminDesignReviewsPage} />
             <Route path="/admin/products" component={AdminProductsPage} />

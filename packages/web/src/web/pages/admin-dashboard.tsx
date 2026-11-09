@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { Link } from "wouter";
-import { ClipboardList, FileCheck2, FileSignature, Package, Users } from "lucide-react";
+import { ClipboardList, FilePlus2, FileCheck2, FileSignature, Package, Users } from "lucide-react";
 import { AdminLayout } from "../components/admin/admin-layout";
 import { AdminProtectedRoute } from "../components/admin/admin-protected-route";
 import { Card, CardContent } from "../components/ui/card";
+import { useMyPermissions } from "../queries/account";
 import { useAdminOrders } from "../queries/admin-orders";
 import { useAdminRfqs } from "../queries/admin-rfqs";
 import { useDesignReviewQueue } from "../queries/admin-design-reviews";
@@ -39,6 +40,8 @@ function StatCard({
 }
 
 function DashboardContent() {
+  const { data: permissions } = useMyPermissions();
+  const canQuote = (permissions ?? []).includes("manage_rfqs");
   const orders = useAdminOrders();
   const rfqs = useAdminRfqs();
   const designQueue = useDesignReviewQueue();
@@ -51,6 +54,20 @@ function DashboardContent() {
 
   return (
     <AdminLayout title="Dashboard">
+      {canQuote && (
+      <Link
+        href="/admin/quotes/new"
+        className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-[#FF6B00]/40 bg-gradient-to-r from-[#FF6B00]/20 to-[#FF6B00]/5 p-5 transition-colors hover:border-[#FF6B00]"
+      >
+        <div>
+          <p className="font-display text-lg font-extrabold text-white">Create a new quote</p>
+          <p className="mt-1 text-sm text-[#B9C2D0]">For a phone or WhatsApp customer, or a returning client — fill it in, then print or save as PDF.</p>
+        </div>
+        <span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#FF6B00] px-5 py-2.5 text-sm font-semibold text-white">
+          <FilePlus2 size={16} /> New quote
+        </span>
+      </Link>
+      )}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard label="Open Orders" value={openOrders} icon={ClipboardList} href="/admin/orders" />
         <StatCard label="Awaiting Payment" value={pendingPayment} icon={ClipboardList} href="/admin/orders" />
