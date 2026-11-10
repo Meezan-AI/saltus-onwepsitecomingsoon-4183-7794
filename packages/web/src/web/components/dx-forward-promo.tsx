@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { ArrowUpRight } from "lucide-react";
 import { useLang } from "../i18n";
 
@@ -89,6 +89,7 @@ export function DxForwardPromo({ compact = false }: { compact?: boolean }) {
 export function DxForwardBanner() {
   const { t, dir } = useLang();
   const isRtl = dir === "rtl";
+  const still = !!useReducedMotion();
 
   return (
     <motion.a
@@ -102,13 +103,15 @@ export function DxForwardBanner() {
       transition={{ duration: 0.8, delay: 1 }}
       className="group relative mt-12 block overflow-hidden rounded-2xl border border-[#20E3C2]/30 bg-[#06182b] shadow-xl shadow-black/30"
     >
-      <img
+      <motion.img
         src="/images/dx-forward-banner.jpg"
         alt=""
         width={520}
         height={630}
         loading="lazy"
-        className={`absolute inset-y-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 lg:w-[34%] ${
+        animate={still ? undefined : { scale: [1, 1.12, 1] }}
+        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+        className={`absolute inset-y-0 h-full w-full object-cover lg:w-[34%] ${
           isRtl
             ? "left-0 lg:object-[50%_55%] lg:[mask-image:linear-gradient(to_left,transparent,#000_55%)]"
             : "right-0 lg:object-[50%_55%] lg:[mask-image:linear-gradient(to_right,transparent,#000_55%)]"
@@ -122,14 +125,38 @@ export function DxForwardBanner() {
         }`}
       />
 
-      <div className="relative flex min-h-[220px] flex-col justify-end gap-4 p-5 pt-28 sm:p-7 sm:pt-32 lg:min-h-[190px] lg:flex-row lg:items-center lg:justify-start lg:gap-8 lg:p-8">
+      {!still && (
+        <motion.span
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 left-0 w-1/4 -skew-x-12 bg-gradient-to-r from-transparent via-white/15 to-transparent"
+          initial={{ x: "-120%" }}
+          animate={{ x: "520%" }}
+          transition={{ duration: 2.4, ease: "easeInOut", repeat: Infinity, repeatDelay: 4.5 }}
+        />
+      )}
+
+      <div className="relative flex min-h-[220px] flex-col justify-end gap-4 p-5 pt-28 sm:p-7 sm:pt-32 lg:min-h-[210px] lg:flex-row lg:items-center lg:justify-start lg:gap-8 lg:p-8">
         <div className="flex items-center gap-5">
-          <img
+          <motion.img
             src="/images/dx-forward-logo.png"
             alt=""
             width={682}
             height={700}
-            className="hidden h-auto w-24 flex-shrink-0 sm:block"
+            animate={
+              still
+                ? undefined
+                : {
+                    y: [0, -8, 0],
+                    scale: [1, 1.04, 1],
+                    filter: [
+                      "drop-shadow(0 0 4px rgba(32,227,194,0.25))",
+                      "drop-shadow(0 0 20px rgba(32,227,194,0.75))",
+                      "drop-shadow(0 0 4px rgba(32,227,194,0.25))",
+                    ],
+                  }
+            }
+            transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
+            className="h-auto w-28 flex-shrink-0 sm:w-32 lg:w-36"
           />
           <div>
             <div className="mb-1.5 flex items-center gap-2">
@@ -147,7 +174,13 @@ export function DxForwardBanner() {
 
         <span className="inline-flex flex-shrink-0 items-center justify-center gap-2 self-start rounded-full border border-[#20E3C2]/50 bg-[#20E3C2]/15 px-5 py-2.5 text-sm font-semibold text-[#20E3C2] backdrop-blur-sm transition-colors group-hover:bg-[#20E3C2]/25 lg:self-center">
           {t.dxForward.cta}
-          <ArrowUpRight size={16} className={isRtl ? "-scale-x-100" : ""} />
+          <motion.span
+            className="inline-flex"
+            animate={still ? undefined : { x: isRtl ? [0, -4, 0] : [0, 4, 0], y: [0, -3, 0] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <ArrowUpRight size={16} className={isRtl ? "-scale-x-100" : ""} />
+          </motion.span>
         </span>
       </div>
     </motion.a>
