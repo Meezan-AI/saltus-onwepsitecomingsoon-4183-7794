@@ -5,7 +5,7 @@ import { ArrowRight, Download, Play } from "lucide-react";
 import { useLang } from "../i18n";
 import { NeuralBackground } from "./neural-background";
 import { VideoModal } from "./video-modal";
-import { DxForwardPromo } from "./dx-forward-promo";
+import { DxForwardBanner } from "./dx-forward-promo";
 
 const STORY_VIDEO = "https://www.youtube.com/embed/yaXLgeTS1RY?autoplay=1&rel=0&modestbranding=1";
 
@@ -136,8 +136,9 @@ export function Hero() {
             ))}
           </motion.div>
 
-          <DxForwardPromo />
         </div>
+
+        <DxForwardBanner />
       </div>
 
       <VideoModal
