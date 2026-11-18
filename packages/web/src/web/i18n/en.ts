@@ -554,6 +554,7 @@ export const en: Content = {
     servicesTitle: "Services",
     contactTitle: "Contact",
     followUs: "Follow Us",
+    intajMember: "Proud member of the Intaj Association",
     rights: "All rights reserved.",
   },
   about: {

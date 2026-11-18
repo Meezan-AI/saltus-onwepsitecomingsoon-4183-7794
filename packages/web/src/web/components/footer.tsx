@@ -42,6 +42,18 @@ export function Footer() {
               <IdCard size={17} className="flex-shrink-0 text-[#FF6B00]" />
               {t.businessCard.footerLink}
             </Link>
+            {/* Intaj Association membership badge — transparent PNG */}
+            <div className="mt-8 flex flex-col items-start gap-3">
+              <img
+                src="/images/intaj-membership.png"
+                alt={t.footer.intajMember}
+                width={400}
+                height={400}
+                loading="lazy"
+                className="h-36 w-36 flex-shrink-0 object-contain drop-shadow-[0_6px_18px_rgba(0,0,0,0.45)] sm:h-40 sm:w-40"
+              />
+              <span className="text-xs font-semibold leading-snug text-[#B9C2D0]">{t.footer.intajMember}</span>
+            </div>
           </div>
 
           <div>

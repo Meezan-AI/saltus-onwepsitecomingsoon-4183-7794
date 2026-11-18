@@ -554,6 +554,7 @@ export const ar: Content = {
     servicesTitle: "الخدمات",
     contactTitle: "تواصل",
     followUs: "تابعنا",
+    intajMember: "عضو فخور في جمعية إنتاج",
     rights: "جميع الحقوق محفوظة.",
   },
   about: {

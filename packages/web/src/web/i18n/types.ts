@@ -179,6 +179,7 @@ export type Content = {
   footer: {
     tagline: string;
     legalName: string;
+    intajMember: string;
     quickLinks: string;
     servicesTitle: string;
     contactTitle: string;
