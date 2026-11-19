@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Printer } from "lucide-react";
+import { downloadQuotePdf } from "../lib/quote-pdf";
 import { EMAIL, PHONE_DISPLAY, WEBSITE } from "../lib/contact";
 
 /** Fixed terms printed on every quotation. */
@@ -71,6 +72,19 @@ export interface QuoteDocProps {
 export function QuoteDocument(p: QuoteDocProps) {
   const validUntil = new Date(p.issued.getTime() + QUOTE_VALID_DAYS * 24 * 60 * 60 * 1000);
   const t = p.totals;
+  const articleRef = useRef<HTMLElement>(null);
+  const [pdfState, setPdfState] = useState<"idle" | "busy" | "error">("idle");
+
+  async function savePdf() {
+    if (!articleRef.current) return;
+    setPdfState("busy");
+    try {
+      await downloadQuotePdf(articleRef.current, `${p.reference}.pdf`);
+      setPdfState("idle");
+    } catch {
+      setPdfState("error");
+    }
+  }
 
   return (
     <div className="min-h-screen bg-neutral-200 py-3 text-neutral-900 print:bg-white print:py-0 sm:py-6" dir="ltr">
@@ -91,19 +105,31 @@ export function QuoteDocument(p: QuoteDocProps) {
         ) : (
           <span />
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {p.actions}
           <button
             type="button"
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-2 rounded-full bg-[#FF6B00] px-5 py-2 text-sm font-semibold text-white hover:bg-[#FF8A3D]"
+            onClick={savePdf}
+            disabled={pdfState === "busy"}
+            className="inline-flex items-center gap-2 rounded-full bg-[#FF6B00] px-5 py-2 text-sm font-semibold text-white hover:bg-[#FF8A3D] disabled:opacity-60"
           >
-            <Printer size={16} /> Print / Save as PDF
+            {pdfState === "busy" ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+            {pdfState === "busy" ? "Preparing PDF…" : "Download PDF"}
+          </button>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-2 rounded-full border border-neutral-400 bg-white px-5 py-2 text-sm font-semibold text-neutral-800 hover:bg-neutral-100"
+          >
+            <Printer size={16} /> Print
           </button>
         </div>
       </div>
+      {pdfState === "error" && (
+        <p className="mx-auto mb-3 max-w-[210mm] px-3 text-sm text-red-700 print:hidden">Couldn't create the PDF. Use Print and choose “Save as PDF” instead.</p>
+      )}
 
-      <article className="mx-auto max-w-[210mm] bg-white p-4 shadow-lg print:max-w-none print:p-0 print:shadow-none sm:p-12">
+      <article ref={articleRef} className="mx-auto max-w-[210mm] bg-white p-4 shadow-lg print:max-w-none print:p-0 print:shadow-none sm:p-12">
         <header className="flex flex-col gap-4 border-b-4 border-[#FF6B00] pb-5 print:flex-row print:items-start print:justify-between sm:flex-row sm:items-start sm:justify-between sm:gap-6">
           <img src="/images/logo-horizontal-trim.png" alt="Saltus ONE" className="h-12 w-auto self-start sm:h-16" />
           <div className="sm:text-right print:text-right">

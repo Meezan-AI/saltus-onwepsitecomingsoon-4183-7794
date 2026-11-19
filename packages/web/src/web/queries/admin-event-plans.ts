@@ -45,3 +45,17 @@ export function useSetPlanStatus() {
     }),
   );
 }
+
+export function useMarkPlanSent() {
+  const qc = useQueryClient();
+  return useMutation(orpc.admin.eventPlans.markSent.mutationOptions({ onSuccess: () => qc.invalidateQueries({ queryKey: orpc.admin.eventPlans.key() }) }));
+}
+
+export function useSendPlanEmail() {
+  const qc = useQueryClient();
+  return useMutation(orpc.admin.eventPlans.sendEmail.mutationOptions({ onSuccess: () => qc.invalidateQueries({ queryKey: orpc.admin.eventPlans.key() }) }));
+}
+
+export function usePublicPlan(token: string) {
+  return useQuery(orpc.publicEventPlan.get.queryOptions({ input: { token }, retry: false }));
+}

@@ -4,7 +4,11 @@ import { ORPCError } from "@orpc/server";
 import { requirePermission } from "../../../middleware/auth";
 import { db } from "../../../database";
 import * as schema from "../../../database/schema";
-import { GROUP_KEYS, PLAN_STATUSES, parseLines, parseSpecs, planReference, specGroupSchema } from "../../../services/event-plan";
+import { sendEmail } from "../../../services/email";
+import { renderBrandedEmail } from "../../../services/email-template";
+import { normalizePhone } from "../../../services/phone";
+import { newShareToken } from "../../../services/quote";
+import { GROUP_KEYS, PLAN_STATUSES, parseLines, parseSpecs, planMessage, planReference, planShareUrl, specGroupSchema } from "../../../services/event-plan";
 
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional();
 
@@ -79,6 +83,12 @@ export const eventPlanItems = {
     }),
 };
 
+async function loadPlan(id: number) {
+  const [row] = await db.select().from(schema.eventPlanRequests).where(eq(schema.eventPlanRequests.id, id));
+  if (!row) throw new ORPCError("NOT_FOUND");
+  return row;
+}
+
 /** Admin → Event plans: submitted planner requests. Same permission as RFQs. */
 export const eventPlans = {
   list: requirePermission("manage_rfqs")
@@ -99,10 +109,89 @@ export const eventPlans = {
   get: requirePermission("manage_rfqs")
     .input(z.object({ id: z.number().int() }))
     .handler(async ({ input }) => {
-      const [row] = await db.select().from(schema.eventPlanRequests).where(eq(schema.eventPlanRequests.id, input.id));
-      if (!row) throw new ORPCError("NOT_FOUND");
+      const row = await loadPlan(input.id);
+      // Old requests predate share links — mint one on first open so Send always has something to link to.
+      let token = row.shareToken;
+      if (!token) {
+        token = newShareToken();
+        await db.update(schema.eventPlanRequests).set({ shareToken: token }).where(eq(schema.eventPlanRequests.id, row.id));
+      }
       const { itemsJson, ...rest } = row;
-      return { ...rest, reference: planReference(row.id), lines: parseLines(itemsJson) };
+      const reference = planReference(row.id);
+      const shareUrl = planShareUrl(token);
+      const seed = { name: row.contactName, reference, eventName: row.eventName, totalCents: row.estimatedTotalCents, unpricedCount: row.unpricedCount, url: shareUrl };
+      return {
+        ...rest,
+        shareToken: token,
+        shareUrl,
+        phoneE164: row.contactPhone ? normalizePhone(row.contactPhone) : null,
+        messages: { ar: planMessage("ar", seed), en: planMessage("en", seed) },
+        reference,
+        lines: parseLines(itemsJson),
+      };
+    }),
+
+  /** Records that the admin opened WhatsApp with the quote link (WhatsApp itself can't confirm delivery). */
+  markSent: requirePermission("manage_rfqs")
+    .input(z.object({ id: z.number().int(), via: z.enum(["whatsapp", "email"]), to: z.string().trim().max(160).optional() }))
+    .handler(async ({ input }) => {
+      await loadPlan(input.id);
+      await db
+        .update(schema.eventPlanRequests)
+        .set({ lastSentAt: new Date(), lastSentVia: input.via, lastSentTo: input.to || null })
+        .where(eq(schema.eventPlanRequests.id, input.id));
+      return { ok: true };
+    }),
+
+  /** Emails the customer a branded message with a link to the quotation page. */
+  sendEmail: requirePermission("manage_rfqs")
+    .input(
+      z.object({
+        id: z.number().int(),
+        to: z.string().trim().email().max(160),
+        lang: z.enum(["ar", "en"]).default("ar"),
+        note: z.string().trim().max(1000).optional(),
+      }),
+    )
+    .handler(async ({ input }) => {
+      const row = await loadPlan(input.id);
+      const token = row.shareToken ?? newShareToken();
+      if (!row.shareToken) await db.update(schema.eventPlanRequests).set({ shareToken: token }).where(eq(schema.eventPlanRequests.id, row.id));
+      const reference = planReference(row.id);
+      const ar = input.lang === "ar";
+      const total = row.estimatedTotalCents != null ? `${(row.estimatedTotalCents / 1000).toFixed(3)} JOD` : null;
+      const { html, text } = renderBrandedEmail({
+        lang: input.lang,
+        preheader: ar ? `عرض السعر ${reference} من سالتوس ون` : `Your quotation ${reference} from Saltus ONE`,
+        heading: ar ? "عرض السعر الخاص بفعاليتكم" : "Your event quotation",
+        paragraphs: [
+          ar ? `مرحباً ${row.contactName}،` : `Hello ${row.contactName},`,
+          ar ? "يسعدنا أن نرسل لكم عرض السعر الخاص بطلبكم. يمكنكم عرضه وطباعته أو حفظه بصيغة PDF من الزر أدناه." : "Thank you for your request. Your quotation is ready — you can view, print or save it as a PDF using the button below.",
+          ...(row.unpricedCount > 0 ? [ar ? "بعض البنود سيتم تسعيرها وإبلاغكم بها." : "A few items will be priced separately and confirmed with you."] : []),
+          ...(input.note ? [input.note] : []),
+        ],
+        highlight: { label: ar ? "رقم الطلب" : "Reference", value: reference },
+        details: {
+          title: ar ? "ملخص" : "Summary",
+          rows: [
+            { label: ar ? "الفعالية" : "Event", value: row.eventName || row.eventType },
+            { label: ar ? "التاريخ" : "Date", value: row.eventDate },
+            { label: ar ? "المبلغ التقديري" : "Estimated total", value: total },
+          ],
+        },
+        cta: { label: ar ? "عرض عرض السعر" : "View quotation", url: planShareUrl(token) },
+        signature: ar ? ["مسارات سالتوس لإدارة المعارض والفعاليات", "Saltus ONE"] : ["Saltus Pathways for Exhibitions and Events Management", "Saltus ONE"],
+      });
+      const result = await sendEmail({
+        to: input.to,
+        subject: ar ? `عرض السعر ${reference} — سالتوس ون` : `Quotation ${reference} — Saltus ONE`,
+        html,
+        text,
+      });
+      if (result.sent) {
+        await db.update(schema.eventPlanRequests).set({ lastSentAt: new Date(), lastSentVia: "email", lastSentTo: input.to }).where(eq(schema.eventPlanRequests.id, row.id));
+      }
+      return { sent: result.sent, reason: result.reason ?? null };
     }),
 
   setStatus: requirePermission("manage_rfqs")

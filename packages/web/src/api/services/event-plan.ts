@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { QUOTE_SITE_URL } from "./quote";
 
 export const GROUP_KEYS = ["printed", "gifts", "venue", "services"] as const;
 export type GroupKey = (typeof GROUP_KEYS)[number];
@@ -154,4 +155,39 @@ export function buildPlanEmail({ reference, request: r, lines }: PlanEmailInput)
     }</b></p>
     ${r.notes ? `<p><b>Notes:</b> ${esc(r.notes)}</p>` : ""}</div>`;
   return { text, html };
+}
+
+/** Customer-facing link to the event quotation (/e/:token). */
+export function planShareUrl(token: string) {
+  return `${QUOTE_SITE_URL}/e/${token}`;
+}
+
+/** Ready-to-send WhatsApp wording for an event quotation. The admin can edit it before sending. */
+export function planMessage(
+  lang: "ar" | "en",
+  d: { name: string; reference: string; eventName: string | null; totalCents: number | null; unpricedCount: number; url: string },
+) {
+  const total = d.totalCents != null ? (d.totalCents / 1000).toFixed(3) : null;
+  if (lang === "ar") {
+    return [
+      `مرحباً ${d.name}،`,
+      `نرفق لكم عرض السعر الخاص بطلبكم${d.eventName ? ` (${d.eventName})` : ""} رقم ${d.reference} من سالتوس ون${total ? ` بقيمة ${total} دينار أردني` : ""}.`,
+      d.unpricedCount > 0 ? "بعض البنود سيتم تسعيرها وإبلاغكم بها." : "",
+      "يمكنكم عرضه وطباعته وتحميله بصيغة PDF من الرابط:",
+      d.url,
+      "سالتوس ون",
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+  return [
+    `Hello ${d.name},`,
+    `Your quotation ${d.reference}${d.eventName ? ` for ${d.eventName}` : ""} from Saltus ONE is ready${total ? `, total ${total} JOD` : ""}.`,
+    d.unpricedCount > 0 ? "A few items will be priced separately and confirmed with you." : "",
+    "You can view, print or download it as a PDF here:",
+    d.url,
+    "Saltus ONE",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "wouter";
-import { FileText, Loader2, Mail, MessageCircle } from "lucide-react";
+import { FileText, Loader2, Send } from "lucide-react";
+import { QuoteSendDialog } from "../components/quote-send-dialog";
 import { AdminLayout } from "../components/admin/admin-layout";
 import { AdminProtectedRoute } from "../components/admin/admin-protected-route";
 import { Badge } from "../components/ui/badge";
@@ -28,6 +29,7 @@ function Row({ k, v }: { k: string; v: React.ReactNode }) {
 function PlanContent({ id }: { id: number }) {
   const plan = useAdminPlan(id);
   const setStatus = useSetPlanStatus();
+  const [sendOpen, setSendOpen] = useState(false);
 
   if (plan.isPending || !plan.data) {
     return (
@@ -38,7 +40,6 @@ function PlanContent({ id }: { id: number }) {
   }
 
   const r = plan.data;
-  const msg = `Hello ${r.contactName}, regarding your event request ${r.reference}${r.eventName ? ` (${r.eventName})` : ""}. — Saltus ONE`;
   const groups = Object.keys(GROUP_LABEL).filter((g) => r.lines.some((l) => l.groupKey === g));
   const currency = "JOD";
 
@@ -123,12 +124,25 @@ function PlanContent({ id }: { id: number }) {
         </div>
 
         <div className="space-y-6">
+          <button
+            type="button"
+            onClick={() => setSendOpen(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-[#FF6B00] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#FF8A3D]"
+          >
+            <Send size={16} /> Send quotation to customer
+          </button>
           <Link
             href={`/admin/event-plans/${r.id}/quote`}
-            className="flex items-center justify-center gap-2 rounded-full bg-[#FF6B00] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#FF8A3D]"
+            className="flex items-center justify-center gap-2 rounded-full border border-white/20 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/5"
           >
-            <FileText size={16} /> Open quote document (PDF)
+            <FileText size={16} /> Open quote document (PDF / print)
           </Link>
+          {r.lastSentAt && (
+            <p className="text-center text-xs text-white/50">
+              Last sent by {r.lastSentVia === "email" ? "email" : "WhatsApp"}
+              {r.lastSentTo ? ` to ${r.lastSentTo}` : ""} · {formatDateTime(r.lastSentAt)}
+            </p>
+          )}
 
           <Card>
             <CardHeader>
@@ -143,26 +157,12 @@ function PlanContent({ id }: { id: number }) {
                 <div>
                   <p className="text-white/50">Phone / WhatsApp</p>
                   <p className="mt-0.5 text-white" dir="ltr">{r.contactPhone}</p>
-                  <a
-                    href={`https://wa.me/${r.contactPhone.replace("+", "")}?text=${encodeURIComponent(msg)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-2 text-xs font-semibold text-[#06260f] transition-colors hover:bg-[#3be37a]"
-                  >
-                    <MessageCircle size={14} /> Reply on WhatsApp
-                  </a>
                 </div>
               )}
               {r.contactEmail && (
                 <div>
                   <p className="text-white/50">Email</p>
                   <p className="mt-0.5 text-white" dir="ltr">{r.contactEmail}</p>
-                  <a
-                    href={`mailto:${r.contactEmail}?subject=${encodeURIComponent(`Your event quote — ${r.reference}`)}&body=${encodeURIComponent(msg)}`}
-                    className="mt-2 inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/5"
-                  >
-                    <Mail size={14} /> Send email
-                  </a>
                 </div>
               )}
             </CardContent>
@@ -189,6 +189,23 @@ function PlanContent({ id }: { id: number }) {
           </Card>
         </div>
       </div>
+      <QuoteSendDialog
+        kind="plan"
+        defaultLang={r.lang === "en" ? "en" : "ar"}
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        quote={{
+          id: r.id,
+          reference: r.reference,
+          email: r.contactEmail,
+          phone: r.contactPhone,
+          phoneE164: r.phoneE164,
+          lastSentAt: r.lastSentAt,
+          lastSentVia: r.lastSentVia,
+          lastSentTo: r.lastSentTo,
+          messages: r.messages,
+        }}
+      />
     </AdminLayout>
   );
 }

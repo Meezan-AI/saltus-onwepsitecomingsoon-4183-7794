@@ -363,6 +363,12 @@ export const eventPlanRequests = sqliteTable("event_plan_requests", {
   unpricedCount: integer("unpriced_count").notNull().default(0),
   /** new | in_progress | quoted | closed */
   status: text("status").notNull().default("new"),
+  /** Unguessable id for the customer-facing quote link /e/:token. */
+  shareToken: text("share_token").unique(),
+  lastSentAt: integer("last_sent_at", { mode: "timestamp" }),
+  /** email | whatsapp */
+  lastSentVia: text("last_sent_via"),
+  lastSentTo: text("last_sent_to"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

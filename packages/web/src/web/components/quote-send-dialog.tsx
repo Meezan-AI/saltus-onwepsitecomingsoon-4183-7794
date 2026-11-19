@@ -5,6 +5,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { useMarkQuoteSent, useSendQuoteEmail } from "../queries/admin-quotes";
+import { useMarkPlanSent, useSendPlanEmail } from "../queries/admin-event-plans";
 import { formatDateTime } from "../lib/admin-format";
 
 type Lang = "ar" | "en";
@@ -47,16 +48,32 @@ const tabClass = (on: boolean) =>
 const langClass = (on: boolean) =>
   `rounded-full px-3 py-1 text-xs font-semibold ${on ? "bg-white text-[#0b1f3a]" : "bg-white/10 text-white/70 hover:bg-white/20"}`;
 
-export function QuoteSendDialog({ quote, open, onOpenChange }: { quote: SendableQuote; open: boolean; onOpenChange: (o: boolean) => void }) {
+export function QuoteSendDialog({
+  quote,
+  open,
+  onOpenChange,
+  kind = "quote",
+  defaultLang = "ar",
+}: {
+  quote: SendableQuote;
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  kind?: "quote" | "plan";
+  defaultLang?: Lang;
+}) {
   const [tab, setTab] = useState<"whatsapp" | "email">("whatsapp");
-  const [lang, setLang] = useState<Lang>("ar");
+  const [lang, setLang] = useState<Lang>(defaultLang);
   const [phone, setPhone] = useState(quote.phoneE164 ?? quote.phone ?? "");
-  const [message, setMessage] = useState(quote.messages.ar);
+  const [message, setMessage] = useState(quote.messages[defaultLang]);
   const [email, setEmail] = useState(quote.email ?? "");
   const [note, setNote] = useState("");
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
-  const sendEmail = useSendQuoteEmail();
-  const markSent = useMarkQuoteSent();
+  const quoteEmail = useSendQuoteEmail();
+  const planEmail = useSendPlanEmail();
+  const quoteMark = useMarkQuoteSent();
+  const planMark = useMarkPlanSent();
+  const sendEmail = kind === "plan" ? planEmail : quoteEmail;
+  const markSent = kind === "plan" ? planMark : quoteMark;
 
   useEffect(() => {
     if (open) setResult(null);

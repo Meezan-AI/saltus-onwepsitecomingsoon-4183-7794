@@ -11,6 +11,7 @@ import { catalog } from "./routes/marketplace/catalog";
 import { eventPlan } from "./routes/marketplace/event-plan";
 import { designs } from "./routes/marketplace/designs";
 import { orders } from "./routes/marketplace/orders";
+import { publicEventPlan } from "./routes/marketplace/public-event-plan";
 import { publicQuote } from "./routes/marketplace/public-quote";
 import { rfq } from "./routes/marketplace/rfq";
 import { uploads } from "./routes/marketplace/uploads";
@@ -31,6 +32,7 @@ export const router = {
   rfq,
   eventPlan,
   publicQuote,
+  publicEventPlan,
   designs,
   addresses,
   uploads,
